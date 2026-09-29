@@ -1,0 +1,32 @@
+{
+    "projects": {
+        "6F19097F-4A4D-118C-31C9-765863432D69": {
+            "config-debug": {
+                "additionalDependencies": [],
+                "additionalIncludeDirectories": [],
+                "additionalLibraryDirectories": [],
+                "preprocessorDefinitions": []
+            },
+            "config-release": {
+                "additionalDependencies": [],
+                "additionalIncludeDirectories": [],
+                "additionalLibraryDirectories": [],
+                "preprocessorDefinitions": []
+            },
+            "dependencies": [],
+            "dependents": [],
+            "name": "Lebon",
+            "property-lib": false,
+            "property-pch": false,
+            "property-vcpkg": false,
+            "property-window": false
+        }
+    },
+    "projects_name_to_guid": {
+        "Lebon": "6F19097F-4A4D-118C-31C9-765863432D69"
+    },
+    "solution_guid": "65582893-471E-6E7B-7C5A-600F01681AA0",
+    "solution_name": "Lebon",
+    "startup_project": "",
+    "version": "2.0"
+}
