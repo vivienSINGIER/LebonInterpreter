@@ -9,7 +9,7 @@ enum TokenType : int
 {
     // SINGLE CHARACTER
     QUOTE, DOUBLE_QUOTE, L_PARENTHESIS, R_PARENTHESIS,
-    DOT, COMMA, NEWLINE,
+    DOT, COMMA, NEW_LINE,
  
     // LITTERALS
     IDENTIFIER, NUMBER, STRING, COMMENT,
@@ -38,7 +38,7 @@ static std::pair<char, TokenType> tokenSingleLetters[] = {
     { ')', TokenType::R_PARENTHESIS },
     { '.', TokenType::DOT },
     { ',', TokenType::COMMA },
-    {'\n', TokenType::NEWLINE },
+    {'\n', TokenType::NEW_LINE },
     {'\0', TokenType::END_OF_FILE },
 };
 

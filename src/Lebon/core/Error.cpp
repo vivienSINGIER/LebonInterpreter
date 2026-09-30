@@ -1,5 +1,7 @@
 #include "core/Error.h"
 
+ErrorManager* ErrorManager::singleton = nullptr;
+
 namespace
 {
     char const* Label(Error::ErrorCode _code)

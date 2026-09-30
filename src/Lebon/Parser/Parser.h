@@ -7,26 +7,26 @@
 
 #include "../Lexer/Tokens.hpp"
 #include "../core/Error.h"
-#include "Ast.h"
+#include "AST.h"
 
 /*
- * Grammar (recursive descent):
+ * Grammaire :
  *
  * program     = { statement } END_OF_FILE ;
  * statement   = varDecl | funcDecl | returnStmt | block | exprStmt ;
- * varDecl     = VAR_DECLARATION IDENTIFIER [ ASSIGN expression ] ";" ;
- * funcDecl    = FUNC_DECLARATION IDENTIFIER "(" [ IDENTIFIER { "," IDENTIFIER } ] ")" block ;
- * returnStmt  = RETURN [ expression ] ";" ;
+ * varDecla     = VAR_DECLARATION IDENTIFIER [ ASSIGN expression ] NEW_LINE ;
+ * funcDecla    = FUNC_DECLARATION IDENTIFIER "(" [ IDENTIFIER { "," IDENTIFIER } ] ")" block ;
+ * returnStmt  = RETURN [ expression ] NEW_LINE ;
  * block       = SCOPE_START { statement } SCOPE_END ;
- * exprStmt    = expression ";" ;
+ * exprStmt    = expression NEW_LINE ;
  *
  * expression  = assignment ;
  * assignment  = IDENTIFIER ASSIGN assignment | additive ;
  * additive    = multiplicative { ( ADD | SUB ) multiplicative } ;
- * multiplicative = unary { ( MUL | DIV ) unary } ;
+ * multi	   = unary { ( MUL | DIV ) unary } ;
  * unary       = SUB unary | call ;
  * call        = primary { "(" [ expression { "," expression } ] ")" } ;
- * primary     = NUMBER | BOOLEAN | IDENTIFIER | "(" expression ")" ;
+ * primary     = NUMBER | TRUE | FALSE | IDENTIFIER | "(" expression ")" ;
  */
 
 class Parser
@@ -52,6 +52,8 @@ private:
 	bool Match(std::initializer_list<TokenType> _types);
 	bool Consume(TokenType _type, std::string const& _message);
 	bool Fail(Token const& _at, std::string const& _message);
+	bool EndOfStatement();
+	void SkipNewLines();
 
 	// Statements
 	NodePtr Statement();
