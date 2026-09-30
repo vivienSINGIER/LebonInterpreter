@@ -12,8 +12,8 @@ public:
     std::unique_ptr<Program> Parse();
 
 private:
-    std::vector<Token> vTokens;
-    size_t current = 0;
+    std::vector<Token> m_tokens;
+    size_t m_current = 0;
 
     // Primitives
     Token const& Peek() const;                 
@@ -21,8 +21,8 @@ private:
     bool IsAtEnd() const;                     
     Token const& Advance();                    
     bool Check(TokenType) const;
-    bool Match(std::initializer_list<TokenType>); 
-    Token const& Consume(TokenType, std::string_view msg); 
+    bool Match(std::initializer_list<TokenType> _list); 
+    Token const& Consume(TokenType, std::string_view _msg); 
 
     // Une méthode par règle
     NodePtr Statement();
