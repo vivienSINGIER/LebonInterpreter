@@ -7,26 +7,27 @@
 
 enum TokenType : int
 {
-    BOOLEAN,
-    OPERAND,
     QUOTE,
     DOUBLE_QUOTE,
     L_PARENTHESIS,
     R_PARENTHESIS,
+    
     VAR_DECLARATION,
     FUNC_DECLARATION,
     SCOPE_START,
     SCOPE_END,
     RETURN,
     COMMENT,
+ 
+    BOOLEAN,
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    ASSIGN,
     
     IDENTIFIER,
     NUMBER,
-};
-
-enum OperandType : int 
-{
-    ADD, SUB, MUL, DIV, ASSIGN, EQUALS  
 };
 
 struct Token
@@ -36,14 +37,11 @@ struct Token
     int row, column;
 };
 
-struct TokenSpec
-{
-    std::string value;
-    TokenType type;
-};
-
-static TokenSpec const tokenSpecs[] = {
-    
+static std::pair<std::string, TokenType> const tokenSpecs[] = {
+    { "'", TokenType::QUOTE },
+    { "\"", TokenType::DOUBLE_QUOTE },
+    { "(", TokenType::L_PARENTHESIS },
+    { ")", TokenType::R_PARENTHESIS },
 };
 
 #endif
