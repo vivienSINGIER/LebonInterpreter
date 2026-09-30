@@ -5,7 +5,7 @@
 #include <string_view>
 #include <vector>
 
-enum TokenType : int
+enum class TokenType : int
 {
     // SINGLE CHARACTER
     QUOTE, DOUBLE_QUOTE, L_PARENTHESIS, R_PARENTHESIS,
@@ -31,7 +31,7 @@ struct Token
     uint32_t row, column;
 };
 
-static std::pair<char, TokenType> tokenSingleLetters[] = {
+static std::pair<char, TokenType> g_tokenSingleLetters[] = {
     { '\'', TokenType::QUOTE },
     { '\"', TokenType::DOUBLE_QUOTE },
     { '(', TokenType::L_PARENTHESIS },
@@ -42,7 +42,7 @@ static std::pair<char, TokenType> tokenSingleLetters[] = {
     {'\0', TokenType::END_OF_FILE },
 };
 
-static std::pair<std::string, TokenType> tokenKeywords[] = {
+static std::pair<std::string, TokenType> g_tokenKeywords[] = {
     { "keksoz", TokenType::VAR_DECLARATION },
     { "bazar", TokenType::VAR_DECLARATION },
 

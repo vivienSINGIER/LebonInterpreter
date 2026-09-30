@@ -1,8 +1,22 @@
-#include <iostream>
 #include "main.h"
+
+#include <iostream>
+
+#include <vector>
+
+#include "Lexer/Lexer.h"
+#include "Lexer/Tokens.hpp"
 
 int main()
 {
-    std::cout << "Hello, World!\n";
+    
+    Lexer lexer("(((().,,.?? fé ");
+    lexer.Scan();
+    
+    std::vector<Token> const& tokens = lexer.GetTokens();
+    
+    for (auto const& token : tokens)
+        std::cout << "[ " << token.literal << " ]" << " ";
+    
     return 0;
 }

@@ -23,6 +23,7 @@ struct Error
     ErrorCode code = ErrorCode::Ok;
     std::string message;
     std::vector<std::string> details;
+    uint32_t col, line;
     
     bool IsOk() const { return code == ErrorCode::Ok; }
     explicit operator bool() const { return !IsOk(); }
@@ -31,21 +32,21 @@ struct Error
     std::string Format() const;
 
     static Error Ok();
-    static Error Lexical(std::string _message);
-    static Error Syntax(std::string _message);
-    static Error Semantics(std::string _message);
-    static Error Execution(std::string _message);
+    static Error Lexical(std::string _message, uint32_t _line, uint32_t _col);
+    static Error Syntax(std::string _message, uint32_t _line, uint32_t _col);
+    static Error Semantics(std::string _message, uint32_t _line, uint32_t _col);
+    static Error Execution(std::string _message, uint32_t _line, uint32_t _col);
 };
 
 class ErrorManager
 {
-    static ErrorManager* singleton;
+    inline static ErrorManager* m_instance = nullptr;
     uint16_t numberOfErrors = 0;
 
 public:
     static ErrorManager* GetErrorManager();
     
-    void LogError(Error const& _error);
+    static void LogError(Error const& _error);
 
     uint16_t GetNumberOfErrors();
 };

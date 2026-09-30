@@ -21,7 +21,8 @@ std::string Error::Format() const
     if (IsOk())
         return "ok";
 
-    std::string out = Label(code);
+    std::string out = "(" + std::to_string(line) + ", " + std::to_string(col) + "): ";
+    out += Label(code);
     out += ": ";
     out += message;
 
@@ -39,54 +40,63 @@ Error Error::Ok()
     return Error();
 }
 
-Error Error::Lexical(std::string _message)
+Error Error::Lexical(std::string _message, uint32_t _line, uint32_t _col)
 {
     Error e;
     e.code    = ErrorCode::Lexical;
     e.message = std::move(_message);
+    e.line    = _line;
+    e.col     = _col;
     return e;
 }
 
-Error Error::Syntax(std::string _message)
+Error Error::Syntax(std::string _message, uint32_t _line, uint32_t _col)
 {
     Error e;
     e.code    = ErrorCode::Syntax;
     e.message = std::move(_message);
+    e.line    = _line;
+    e.col     = _col;
     return e;
 }
 
-Error Error::Semantics(std::string _message)
+Error Error::Semantics(std::string _message, uint32_t _line, uint32_t _col)
 {
     Error e;
     e.code    = ErrorCode::Semantics;
     e.message = std::move(_message);
+    e.line    = _line;
+    e.col     = _col;
     return e;
 }
 
-Error Error::Execution(std::string _message)
+Error Error::Execution(std::string _message, uint32_t _line, uint32_t _col)
 {
     Error e;
     e.code    = ErrorCode::Execution;
     e.message = std::move(_message);
+    e.line    = _line;
+    e.col     = _col;
     return e;
 }
 
 ErrorManager* ErrorManager::GetErrorManager()
 {
-    if ( singleton != nullptr )
-        delete singleton;
+    if ( m_instance != nullptr )
+        delete m_instance;
         
-    singleton = new ErrorManager();
-    return singleton;
+    m_instance = new ErrorManager();
+    return m_instance;
 }
 
 void ErrorManager::LogError(Error const& _error)
 {
+    ErrorManager* m = ErrorManager::GetErrorManager();
     if (!_error)
         return;
         
-    Log::Log(LogType::Error, _error.message);
-    numberOfErrors++;
+    Log::Log(LogType::Error, _error.Format());
+    m->numberOfErrors++;
 }
 
 uint16_t ErrorManager::GetNumberOfErrors()
