@@ -22,7 +22,7 @@ Ce document permet de conserver une vue d'ensemble claire sur la logique, la gra
 ### 4.1. Commentaires
 
 ```text
-``koz` commentaire sur une ligne `finkoz`
+`koz` commentaire sur une ligne `finkoz`
 ```
 
 ### 4.2. Variables
@@ -65,10 +65,13 @@ afise age
 ### 5.1. Condition
 
 ```text
-kan condition ouver
+kan condition 
+ouver
     instruction1
     instruction2
-laFin otreman ran
+laFin 
+otreman 
+ran
     instruction3
 setou
 ```
@@ -83,7 +86,8 @@ lot lodebi afise "Mineur" setou
 ### 5.2. Boucle
 
 ```text
-toultan condition ouver
+toultan condition 
+ouver
     instruction
 laFin
 ```
@@ -92,7 +96,8 @@ Exemple :
 
 ```text
 keksoz i idon 0
-tanki i pli-piti 5 rant
+tanki i pli-piti 5 
+rant
     afise i
     bazar i poufer i plis 1
 ferm
@@ -101,7 +106,8 @@ ferm
 ## 6. Fonctions
 
 ```text
-fonksyon nom(param1, param2) ouver
+fonksyon nom(param1, param2) 
+ouver
     instruction
     ala valeur
 ferm
@@ -110,7 +116,8 @@ ferm
 Exemple :
 
 ```text
-zafer addition(a, b) ouver
+zafer addition(a, b) 
+ouver
     ran a zout b
 setou
 
