@@ -12,32 +12,37 @@ enum TokenType : int
     DOT, COMMA, NEWLINE,
  
     // LITTERALS
-    IDENTIFIER, NUMBER, STRING,
+    IDENTIFIER, NUMBER, STRING, COMMENT,
     
     // KEYWORDS
     VAR_DECLARATION, FUNC_DECLARATION, 
     SCOPE_START, SCOPE_END, RETURN,
     COMMENT_START, COMMENT_END,
  
-    TRUE, FALSE, ADD, SUB, MUL, DIV, ASSIGN,
+    TRUE, FALSE, ADD, SUB, MUL, DIV, ASSIGN, 
+    
+    END_OF_FILE
 };
 
 struct Token
 {
     TokenType type;
     std::string literal;
-    int row, column;
+    uint32_t row, column;
 };
 
-static std::pair<std::string, TokenType> const tokenSpecs[] = {
-    { "'", TokenType::QUOTE },
-    { "\"", TokenType::DOUBLE_QUOTE },
-    { "(", TokenType::L_PARENTHESIS },
-    { ")", TokenType::R_PARENTHESIS },
-    { ".", TokenType::DOT },
-    { ",", TokenType::COMMA },
-    {"\n", TokenType::NEWLINE },
-    
+static std::pair<char, TokenType> tokenSingleLetters[] = {
+    { '\'', TokenType::QUOTE },
+    { '\"', TokenType::DOUBLE_QUOTE },
+    { '(', TokenType::L_PARENTHESIS },
+    { ')', TokenType::R_PARENTHESIS },
+    { '.', TokenType::DOT },
+    { ',', TokenType::COMMA },
+    {'\n', TokenType::NEWLINE },
+    {'\0', TokenType::END_OF_FILE },
+};
+
+static std::pair<std::string, TokenType> tokenKeywords[] = {
     { "keksoz", TokenType::VAR_DECLARATION },
     { "bazar", TokenType::VAR_DECLARATION },
 
