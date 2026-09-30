@@ -28,35 +28,36 @@ Ce document permet de conserver une vue d'ensemble claire sur la logique, la gra
 ### 4.2. Variables
 
 ```text
-set nom = valeur
+basaz nom idon valeur
 ```
 
 Exemple :
 
 ```text
-set age = 18
-set nom = "Alice"
+keksoz age ifér 18
+keksoz nom saidon "Alice"
 ```
 
 ### 4.3. Opérations
 
 ```text
-set total = 5 + 3 * 2
+keksoz total ifér 5 plis 3 * 2
 ```
 
 Les opérations supportées peuvent inclure :
 
-- addition : `+`
-- soustraction : `-`
-- multiplication : `*`
-- division : `/`
-- comparaison : `==`, `!=`, `<`, `>`, `<=`, `>=`
+- addition : `+` = `ek`/`anplis`/`plis`/`azout`
+- soustraction : `-` = `mwin`/`rotir`/`anlèv` 
+- multiplication : `*` = `fwa`/`fwa fwa`/`miltipli`
+- division : `/` = `koup`/`partaz`/`kasan`
+- comparaison : `==` = `parey`/`égal`/`mem`, `!=` = `pa-égal`/`diferan`/`pa-parey`, `<` = `pli-piti`/`piti`/`anba`, `>` =  `dépas`/`gran`/`plis-gran`, `<=` = `pli-piti-egal`/`pa-gran`, `>=` = `pa-piti` / `plis-gran-egal`
+
 
 ### 4.4. Affichage
 
 ```text
-print "Bonjour"
-print age
+afise "Bonjour"
+afise age
 ```
 
 ## 5. Structures de contrôle
@@ -64,79 +65,77 @@ print age
 ### 5.1. Condition
 
 ```text
-if condition {
+kan condition ouver
     instruction1
     instruction2
-} else {
+laFin otreman ran
     instruction3
-}
+setou
 ```
 
 Exemple :
 
 ```text
-if age >= 18 {
-    print "Majeur"
-} else {
-    print "Mineur"
-}
+kan age plis-gran-egal 18 ouver afise "Majeur" ferm
+lot lodebi afise "Mineur" setou
 ```
 
 ### 5.2. Boucle
 
 ```text
-while condition {
+toultan condition ouver
     instruction
-}
+laFin
 ```
 
 Exemple :
 
 ```text
-set i = 0
-while i < 5 {
-    print i
-    set i = i + 1
-}
+keksoz i idon 0
+tanki i pli-piti 5 rant
+    afise i
+    bazar i poufer i plis 1
+ferm
 ```
 
 ## 6. Fonctions
 
 ```text
-func nom(param1, param2) {
+fonksyon nom(param1, param2) ouver
     instruction
-    return valeur
-}
+    ala valeur
+ferm
 ```
 
 Exemple :
 
 ```text
-func addition(a, b) {
-    return a + b
-}
+zafer addition(a, b) ouver
+    ran a zout b
+setou
 
-set result = addition(2, 3)
-print result
+keksoz result saidon addition(2, 3)
+afise result
 ```
 
 ## 7. Types supportés
 
 - flottant : `3.14`
 - chaîne : `"lebon"`
+- bool : `true` = `pa-fo`, `false` = `pa-vré`
 
 ## 8. Sémantique
 
 ### 8.1. Règles d'évaluation
 
+# TODO
 - Les expressions sont évaluées de gauche à droite selon la priorité des opérateurs.
-- Les variables sont stockées dans un environnement global ou local.
+- Les variables sont stockées dans un environnement local.
 - Les blocs sont exécutés séquentiellement.
 - Une fonction reçoit des arguments et renvoie une valeur avec `return` = `ran`/`rovoy`/`donn`/`ala`.
 
 ### 8.2. Portée des variables
 
-- Variables globales : visibles partout
 - Variables locales : visibles uniquement dans la fonction ou le bloc courant
 
 ## 9. Exemple complet
@@ -145,8 +144,8 @@ print result
 keksoz nom = "Nathan"
 bazar age = 20
 
-if age >= 18 ouver afise "Bienvenue " ek nom ferm
-else ouver afise "Accès refusé" setou
+kan age pa-pit 18 ouver afise "Bienvenue " ek nom ferm
+otreman ouver afise "Accès refusé" setou
 
 zafer carre(x) ouver rovoy x fwa x (ou x fwa fwa 2) laFin
 
@@ -172,14 +171,19 @@ Bienvenue Alice
 
 ### 10.2. Tokens principaux
 
-- mots-clés : `set` = `keksoz`/`bazar`, `if`, `else`, `while`, `func` = `zafer`/`fonksyon`/`travay`, `return` = `ran`/`rovoy`/`donn`/`ala`, `print` = `afise`
-- identifiants : `nom`, `age`, `result`
+- mots-clés : `set` = `keksoz`/`bazar`, `if` = `kan`/`si-sa`/`si`, `else` = `sinon`/`lot`/`otreman`, `else if` = `sinon-si`/`si-ankor`/`lot-si`
+        `while` = `tanki`/`toultan`, `func` = `zafer`/`fonksyon`/`travay`, `return` = `ran`/`rovoy`/`donn`/`ala`, `print` = `afise`, `for`= `pou`, `break` = `aret`/`stop`, `continue` = `kontinie`/`poursiv`
 - littéraux : nombres, chaînes, booléens
 - opérateurs : `+` = `ek`/`anplis`/`plis`/`azout`, `-` = `mwin`/`rotir`/`anlèv`, `*` = `fwa`/`fwa fwa`/`miltipli`, `/` = `koup`/`partaz`/`kasan`, `==` = `leparay`/`lomen`
 - ponctuations : `(`, `)`, `{` = `ouver`/`rant`/`lodebi`, `}` = `ferm`/`setou`/`sorti`/`laFin`, `,`, `=` = `idon`/`poufer`/`ifér`/`le`/`saidon`
 
+
+### 10.3 Tokens Comparaison
+
+
 ## 11. Points d'attention
 
+# TODO
 - gérer les erreurs de syntaxe proprement
 - vérifier les types avant les opérations
 - définir les règles de priorité des opérateurs
@@ -193,6 +197,6 @@ Bienvenue Alice
 
 ## 13. Résumé
 
-Ce langage est une base simple et pédagogique pour comprendre la construction d'un langage fait main : analyse lexicale, syntaxique, gestion de variables, structures de contrôle et exécution. Il suffit de construire les briques de base pour étendre progressivement la puissance du langage.
+Ce langage fait TOURNER LA TÊTE !
 
 ---
