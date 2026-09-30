@@ -1,93 +1,163 @@
 #include "Parser.h"
 
-Parser::Parser(std::vector<Token> _tokens)
+Parser::Parser(std::vector<Token> _tokens) : m_tokens(std::move(_tokens))
 {
+	if (m_tokens.empty() || m_tokens.back().type != TokenType::END_OF_FILE)
+	{
+		int row = m_tokens.empty() ? 1 : m_tokens.back().row;
+		int column = m_tokens.empty() ? 1 : m_tokens.back().column;
 
+		m_tokens.push_back({ TokenType::END_OF_FILE, {}, row, column });
+	}
 }
 
 std::unique_ptr<Program> Parser::Parse()
 {
-    return std::unique_ptr<Program>();
+	auto program = MakeNode<Program>(Peek());
+
+	while (!IsAtEnd())
+	{
+		NodePtr stmt = Statement();
+		if (!stmt)
+			return nullptr;
+
+		program->statements.push_back(std::move(stmt));
+	}
+	return program;
 }
 
-Token const& Parser::Peek() const
-{
-    return m_tokens[m_current];
+Token const& Parser::Peek() const 
+{ 
+	return m_tokens[current]; 
 }
 
-Token const& Parser::Previous() const
-{
-    // TODO: insérer une instruction return ici
+Token const& Parser::Previous() const 
+{ 
+	return m_tokens[current - 1]; 
 }
 
-bool Parser::IsAtEnd() const
+bool Parser::IsAtEnd() const 
 {
-    return false;
+	return Peek().type == TokenType::END_OF_FILE; 
+}
+
+bool Parser::Check(TokenType _type) const 
+{ 
+	return Peek().type == _type;
 }
 
 Token const& Parser::Advance()
 {
-    // TODO: insérer une instruction return ici
+	if (IsAtEnd() == false)
+		current++;
+
+	return Previous();
 }
 
-bool Parser::Check(TokenType) const
+bool Parser::Match(std::initializer_list<TokenType> _types)
 {
-    return false;
+	for (TokenType type : _types)
+	{
+		if (Check(type))
+		{
+			Advance();
+			return true;
+		}
+	}
+	return false;
 }
 
-bool Parser::Match(std::initializer_list<TokenType> _list)
+bool Parser::Consume(TokenType _type, std::string const& _message)
 {
-    for (TokenType type : _list)
-        if (type == Peek().type)
-            return true;
-
-    return false;
+	if (Check(_type))
+	{
+		Advance();
+		return true;
+	}
+	return Fail(Peek(), _message);
 }
 
-Token const& Parser::Consume(TokenType, std::string_view _msg)
+bool Parser::Fail(Token const& _at, std::string const& _message)
 {
-    // TODO: insérer une instruction return ici
+	if (error.IsOk()) // keep the first error only
+	{
+		error = Error::Syntax(_message + " (line " + std::to_string(_at.row)
+			+ ", column " + std::to_string(_at.column) + ")");
+	}
+	return false;
 }
 
 NodePtr Parser::Statement()
 {
-    return NodePtr();
+	if (Match({ TokenType::VAR_DECLARATION })) return VarDeclaration();
+	if (Match({ TokenType::FUNC_DECLARATION })) return FuncDeclaration();
+	if (Match({ TokenType::RETURN })) return ReturnStatement();
+	if (Check(TokenType::SCOPE_START)) return BlockStatement();
+	return ExpressionStatement();
 }
 
 NodePtr Parser::VarDeclaration()
 {
-    return NodePtr();
+	auto decl = MakeNode<VarDecl>(Previous());
+
+	if (Consume(TokenType::IDENTIFIER, "expected variable name") == false)
+		return nullptr;
+
+	decl->name = Previous().type;
+
+	if (Match({ TokenType::ASSIGN }))
+	{
+		decl->init = Expression();
+		if (!decl->init)
+			return nullptr;
+	}
+
+	if (Consume(TokenType::SEMICOLON, "expected ';' after variable declaration") == false)
+		return nullptr;
+
+	return decl;
 }
 
 NodePtr Parser::FuncDeclaration()
 {
-    return NodePtr();
+	auto func = MakeNode<FuncDecl>(Previous());
+
+	if (Consume(TokenType::IDENTIFIER, "expected function name") == false)
+		return nullptr;
+	func->name = Previous().type;
+
+	if (!Consume(TokenType::L_PARENTHESIS, "expected '(' after function name"))
+		return nullptr;
+
+	if (!Check(TokenType::R_PARENTHESIS))
+	{
+		do
+		{
+			if (!Consume(TokenType::IDENTIFIER, "expected parameter name"))
+				return nullptr;
+			func->params.push_back(Previous().type);
+		} while (Match({ TokenType::COMMA }));
+	}
+
+	if (!Consume(TokenType::R_PARENTHESIS, "expected ')' after parameters"))
+		return nullptr;
+
+	func->body = BlockStatement();
+	if (!func->body)
+		return nullptr;
+	return func;
 }
 
-std::unique_ptr<Block> Parser::BlockStatement()
+NodePtr Parser::ReturnStatement()
 {
-    return std::unique_ptr<Block>();
-}
+	auto ret = MakeNode<ReturnStmt>(Previous());
 
-NodePtr Parser::Expression()
-{
-    return NodePtr();
-}
+	if (!Check(TokenType::SEMICOLON))
+	{
+		ret->value = Expression();
+		if (!ret->value)
+			return nullptr;
+	}
 
-NodePtr Parser::Term()
-{
-    auto left = Factor();
-    while (Match({ TokenType::MUL, TokenType::DIV }))
-    {
-        auto op = Previous();
-        auto right = Factor();
-        left = std::make_unique<BinaryExpr>();
-    }
-    return left;
-}
-
-NodePtr Parser::Factor()
-{
-    return NodePtr();
-}
-
+	if (!Consume(TokenType::SEMICOLON, "expected ';' after return"))
+		return nullptr;
