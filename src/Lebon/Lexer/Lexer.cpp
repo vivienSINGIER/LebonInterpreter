@@ -1,5 +1,8 @@
 ﻿#include "Lexer.h"
 
+#include <iomanip>
+#include <iostream>
+
 #include "core/Error.h"
 
 Lexer::Lexer(std::string const& _input) : m_content(_input)
@@ -66,6 +69,65 @@ void Lexer::Scan()
     }
 }
 
+void Lexer::DisplayTokens()
+{
+    for (auto const& token : m_tokens)
+    {
+        std::string const& typeName = g_tokenTypeNames[static_cast<int>(token.type)];
+        std::string literal = token.type == TokenType::NEWLINE ? "\\n" : token.literal;
+
+        std::cout << std::left
+                  << std::setw(14) << typeName
+                  << " row " << std::setw(4) << token.row
+                  << " col " << std::setw(4) << token.column
+                  << " '" << literal << "'\n";
+    }
+}
+
+void Lexer::Comment()
+{
+    size_t bodyStart = m_current;
+    
+    while (!IsAtEnd())
+    {
+        char32_t c = Peek();
+        
+        if (c == U'\n')
+        {
+            Advance();
+            m_line++;
+            m_column = 1;
+            continue;
+        }
+        
+        if (IsIdentifierStart(c))
+        {
+            size_t wordStart = m_current;
+            
+            while (IsIdentifierPart(Peek()))
+                Advance();
+            
+            std::string_view word(m_content.data() + wordStart, m_current - wordStart);
+            if (word == "finkoz")
+            {
+                Token token;
+                token.type = TokenType::COMMENT;
+                token.literal = m_content.substr(bodyStart, wordStart - bodyStart);
+                token.row = m_startLine;
+                token.column = m_startColumn;
+                m_tokens.push_back(token);
+                return;
+            }
+            continue;
+        }
+        
+        Advance();
+    }
+    
+    Error e = Error::Lexical("unterminated comment, missing 'finkoz'\n", m_startLine, m_startColumn);
+    ErrorManager::LogError(e);
+}
+
 void Lexer::String()
 {
     uint32_t startColumn = m_column - 1;
@@ -82,7 +144,12 @@ void Lexer::String()
     }
     
     Advance();
-    AddToken(TokenType::STRING);
+    Token token;
+    token.type = TokenType::STRING;
+    token.literal = m_content.substr(m_start + 1, m_current - m_start - 2);
+    token.row = m_startLine;
+    token.column = m_startColumn;
+    m_tokens.push_back(token);
 }
 
 void Lexer::Number()
@@ -104,6 +171,18 @@ void Lexer::Identifier()
     {
         if (word == token.first)
         {
+            if (token.second == TokenType::COMMENT_START)
+            {
+                Comment();
+                return;
+            }
+            if (token.second == TokenType::COMMENT_END)
+            {
+                Error e = Error::Lexical("'finkoz' without matching 'koz'\n", m_startLine, m_startColumn);
+                ErrorManager::LogError(e);
+                return;
+            }
+            
             AddToken(token.second);
             return;
         }
@@ -115,6 +194,8 @@ void Lexer::Identifier()
 void Lexer::ScanToken()
 {
     m_start = m_current;
+    m_startLine = m_line;
+    m_startColumn = m_column;
     char32_t c = Advance();
     
     if (c == U'\n')
@@ -169,6 +250,8 @@ void Lexer::AddToken(TokenType _type)
     Token token;
     token.type = _type;
     token.literal = m_content.substr(m_start, m_current - m_start);
+    token.row = m_startLine;
+    token.column = m_startColumn;
     m_tokens.push_back(token);
 }
 

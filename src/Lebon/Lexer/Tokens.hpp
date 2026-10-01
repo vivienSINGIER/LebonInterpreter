@@ -93,4 +93,13 @@ static std::pair<std::string, TokenType> g_tokenKeywords[] = {
     { "saidonn", TokenType::ASSIGN },
 };
 
+static std::string g_tokenTypeNames[] = {
+    "L-Parenthesis", "R-Parenthesis",
+    "Dot", "Comma", "Newline", 
+    "Identifier", "Number", "String", "Comment", 
+    "Variable", "Function", "ScopeStart", "ScopeEnd",
+    "Return", "CommentStart", "CommentEnd", "true", "false",
+    "Add", "Sub", "Mul", "Div", "Assign", "End of File"
+};
+
 #endif

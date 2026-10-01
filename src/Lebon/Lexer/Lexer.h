@@ -15,16 +15,23 @@ public:
     std::vector<Token> const& GetTokens();
     
     void Scan();
+    void DisplayTokens();
     
 private:
     std::string const m_content; 
     std::vector<Token> m_tokens;
     
+    bool m_isCommented = false;
+    
     size_t m_current;
     size_t m_start;
+    
+    uint32_t m_startLine;
+    uint32_t m_startColumn;
     uint32_t m_line;
     uint32_t m_column;
     
+    void Comment();
     void String();
     void Number();
     void Identifier();

@@ -10,13 +10,9 @@
 int main()
 {
     
-    Lexer lexer("(((().,,.?? ifé 894 \"bonjour\" 42.99 \"toz");
+    Lexer lexer("(((().,,.?? ifé 894 \"bonjour\" 42.99 \"toz\" koz ceci est un commentaire finkoz test koz reteest");
     lexer.Scan();
-    
-    std::vector<Token> const& tokens = lexer.GetTokens();
-    
-    for (auto const& token : tokens)
-        std::cout << "[ " << token.literal << " ]" << " ";
+    lexer.DisplayTokens();
     
     return 0;
 }
