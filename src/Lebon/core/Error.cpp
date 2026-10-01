@@ -11,6 +11,7 @@ namespace
         case Error::ErrorCode::Syntax:     return "syntax error";
         case Error::ErrorCode::Semantics:  return "semantics error";
         case Error::ErrorCode::Execution:      return "execution error";
+        case Error::ErrorCode::Io:           return "io error";
         }
         return "error";
     }
@@ -21,7 +22,10 @@ std::string Error::Format() const
     if (IsOk())
         return "ok";
 
-    std::string out = "(" + std::to_string(line) + ", " + std::to_string(col) + "): ";
+    std::string out;
+    if (line != 0 && col != 0)
+        out = "(" + std::to_string(line) + ", " + std::to_string(col) + "): ";
+    
     out += Label(code);
     out += ": ";
     out += message;
@@ -80,6 +84,15 @@ Error Error::Execution(std::string _message, uint32_t _line, uint32_t _col)
     return e;
 }
 
+Error Error::Io(std::string _message, fs::path _path)
+{
+    Error e;
+    e.code    = ErrorCode::Io;
+    e.message = std::move(_message);
+    e.path    = std::move(_path);
+    return e;
+}
+
 ErrorManager* ErrorManager::GetErrorManager()
 {
     if ( m_instance != nullptr )
@@ -96,10 +109,12 @@ void ErrorManager::LogError(Error const& _error)
         return;
         
     Log::Log(LogType::Error, _error.Format());
-    m->numberOfErrors++;
+    if (m->m_numberOfErrors == 0)
+        m->m_firstCode = static_cast<int>(_error.code);
+    m->m_numberOfErrors++;
 }
 
-uint16_t ErrorManager::GetNumberOfErrors()
+int ErrorManager::Code()
 {
-    return numberOfErrors;
+    return GetErrorManager()->m_firstCode;   
 }

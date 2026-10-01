@@ -4,15 +4,15 @@
 
 #include <vector>
 
+#include "core/FileHelper.h"
 #include "Lexer/Lexer.h"
 #include "Lexer/Tokens.hpp"
 
 int main()
 {
-    
-    Lexer lexer("(((().,,.?? ifé 894 \"bonjour\" 42.99 \"toz\" koz ceci est un commentaire finkoz test koz reteest");
+    Lexer lexer(fs::path("../../res/Lebon/test.lbn"));
     lexer.Scan();
     lexer.DisplayTokens();
     
-    return 0;
+    return ErrorManager::Code();
 }

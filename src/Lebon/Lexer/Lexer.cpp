@@ -5,6 +5,17 @@
 
 #include "core/Error.h"
 
+Lexer::Lexer(fs::path const& _path)
+{
+    Error e = FileHelper::ReadFile(_path, m_content);
+    if (e)
+        ErrorManager::LogError(e);
+    m_current = 0;
+    m_start = 0;
+    m_line = 1;
+    m_column = 1;
+}
+
 Lexer::Lexer(std::string const& _input) : m_content(_input)
 {
     m_current = 0;
@@ -132,7 +143,7 @@ void Lexer::String()
 {
     uint32_t startColumn = m_column - 1;
 
-    while (Peek() != U'\"' && Peek() != U'\n' && !IsAtEnd())
+    while (Peek() != U'\"' && Peek() != U'\n' && Peek() != U'\r' && !IsAtEnd())
         Advance();
 
     if (Peek() != U'\"')
@@ -210,7 +221,7 @@ void Lexer::ScanToken()
         AddToken(TokenType::END_OF_FILE);
         return;
     }
-    if (c == U' ')
+    if (c == U' ' || c == U'\r' || c == U'\t')
         return;
     
     for (auto const& token : g_tokenSingleLetters)

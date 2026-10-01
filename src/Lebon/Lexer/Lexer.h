@@ -6,10 +6,12 @@
 
 #include "Tokens.hpp"
 
+#include "../core/FileHelper.h"
 
 class Lexer
 {
 public:
+    Lexer(fs::path const& _path);
     Lexer(std::string const& input);
     
     std::vector<Token> const& GetTokens();
@@ -18,7 +20,7 @@ public:
     void DisplayTokens();
     
 private:
-    std::string const m_content; 
+    std::string m_content; 
     std::vector<Token> m_tokens;
     
     bool m_isCommented = false;

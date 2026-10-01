@@ -9,6 +9,8 @@
 
 #include "Logger.h"
 
+namespace fs = std::filesystem;
+
 struct Error
 {
     enum class ErrorCode : int
@@ -18,11 +20,13 @@ struct Error
         Syntax = 2,
         Semantics = 3,
         Execution = 4,
+        Io = 5
     };
 
     ErrorCode code = ErrorCode::Ok;
     std::string message;
     std::vector<std::string> details;
+    fs::path path;
     uint32_t col, line;
     
     bool IsOk() const { return code == ErrorCode::Ok; }
@@ -36,19 +40,20 @@ struct Error
     static Error Syntax(std::string _message, uint32_t _line, uint32_t _col);
     static Error Semantics(std::string _message, uint32_t _line, uint32_t _col);
     static Error Execution(std::string _message, uint32_t _line, uint32_t _col);
+    static Error Io(std::string _message, fs::path _path = "");
 };
 
 class ErrorManager
 {
     inline static ErrorManager* m_instance = nullptr;
-    uint16_t numberOfErrors = 0;
+    uint16_t m_numberOfErrors = 0;
+    int m_firstCode = 0;
 
 public:
     static ErrorManager* GetErrorManager();
     
     static void LogError(Error const& _error);
-
-    uint16_t GetNumberOfErrors();
+    static int Code();
 };
 
 
