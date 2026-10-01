@@ -10,7 +10,7 @@
 int main()
 {
     
-    Lexer lexer("(((().,,.?? fé ");
+    Lexer lexer("(((().,,.?? ifé 894 \"bonjour\" 42.99 \"toz");
     lexer.Scan();
     
     std::vector<Token> const& tokens = lexer.GetTokens();

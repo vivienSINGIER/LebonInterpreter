@@ -8,7 +8,7 @@
 enum class TokenType : int
 {
     // SINGLE CHARACTER
-    QUOTE, DOUBLE_QUOTE, L_PARENTHESIS, R_PARENTHESIS,
+    L_PARENTHESIS, R_PARENTHESIS,
     DOT, COMMA, NEWLINE,
  
     // LITTERALS
@@ -32,8 +32,6 @@ struct Token
 };
 
 static std::pair<char, TokenType> g_tokenSingleLetters[] = {
-    { '\'', TokenType::QUOTE },
-    { '\"', TokenType::DOUBLE_QUOTE },
     { '(', TokenType::L_PARENTHESIS },
     { ')', TokenType::R_PARENTHESIS },
     { '.', TokenType::DOT },

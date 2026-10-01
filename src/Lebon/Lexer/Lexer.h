@@ -25,16 +25,22 @@ private:
     uint32_t m_line;
     uint32_t m_column;
     
+    void String();
+    void Number();
+    void Identifier();
     void ScanToken();
     void AddToken(TokenType _type);
     
     bool IsAtEnd();
     char32_t Advance();
     char32_t Peek();
-    bool Match(char32_t const _expected);
+    char32_t PeekAt(size_t _pos);
+    bool Match(char32_t _expected);
     
     char32_t DecodeAt(size_t _pos, size_t& _length);
     
+    bool IsAlphabetical(char32_t _char);
+    bool IsNumerical(char32_t _char);
     bool IsIdentifierStart(char32_t _char);
     bool IsIdentifierPart(char32_t _char);
 };

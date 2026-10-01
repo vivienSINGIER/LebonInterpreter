@@ -37,7 +37,16 @@ char32_t Lexer::Peek()
     return DecodeAt(m_current, length);
 }
 
-bool Lexer::Match(char32_t const _expected)
+char32_t Lexer::PeekAt(size_t _pos)
+{
+    if (_pos >= m_content.length())
+        return U'\0';
+    
+    size_t length;
+    return DecodeAt(_pos, length);
+}
+
+bool Lexer::Match(char32_t _expected)
 {
     if (IsAtEnd()) return false;
     size_t length;
@@ -55,6 +64,52 @@ void Lexer::Scan()
     {
         ScanToken();
     }
+}
+
+void Lexer::String()
+{
+    uint32_t startColumn = m_column - 1;
+
+    while (Peek() != U'\"' && Peek() != U'\n' && !IsAtEnd())
+        Advance();
+
+    if (Peek() != U'\"')
+    {
+        std::string raw = m_content.substr(m_start, m_current - m_start);
+        Error e = Error::Lexical(std::string("unterminated string '") + raw + "'\n", m_line, startColumn);
+        ErrorManager::LogError(e);
+        return;
+    }
+    
+    Advance();
+    AddToken(TokenType::STRING);
+}
+
+void Lexer::Number()
+{
+    while (IsNumerical(Peek()))
+        Advance();
+    
+    AddToken(TokenType::NUMBER);
+}
+
+void Lexer::Identifier()
+{
+    while (IsIdentifierPart(Peek()))
+        Advance();
+    
+    std::string_view word(m_content.data() + m_start, m_current - m_start);
+    
+    for (auto const& token : g_tokenKeywords)
+    {
+        if (word == token.first)
+        {
+            AddToken(token.second);
+            return;
+        }
+    }
+    
+    AddToken(TokenType::IDENTIFIER);
 }
 
 void Lexer::ScanToken()
@@ -84,6 +139,24 @@ void Lexer::ScanToken()
             AddToken(token.second);
             return;
         }
+    }
+    
+    if (c == U'\"')
+    {
+        String();
+        return;
+    }
+    
+    if (IsIdentifierStart(c))
+    {
+        Identifier();
+        return;
+    }
+    
+    if (IsNumerical(c))
+    {
+        Number();
+        return;
     }
     
     std::string raw = m_content.substr(m_start, m_current - m_start);
@@ -129,12 +202,28 @@ char32_t Lexer::DecodeAt(size_t _pos, size_t& _length)
     return c;
 }
 
+bool Lexer::IsAlphabetical(char32_t _char)
+{
+    if ( (_char >= U'a' && _char <= U'z') || (_char >= U'A' && _char <= U'Z') )
+        return true;
+    
+    if (_char >= 0x00C0 && _char <= 0x00FF)                                                                                                                                                                                       
+        return _char != 0x00D7 && _char != 0x00F7; 
+    
+    return false;
+}
+
+bool Lexer::IsNumerical(char32_t _char)
+{
+    return (_char >= U'0' && _char <= U'9');
+}
+
 bool Lexer::IsIdentifierStart(char32_t _char)
 {
-    return (_char >= U'A' && _char <= U'Z') || (_char >= 'a' && _char <= 'z') || _char == U'_' || _char >= 0x80;
+    return IsAlphabetical(_char) || _char == U'_';
 }
 
 bool Lexer::IsIdentifierPart(char32_t _char)
 {
-    return IsIdentifierStart(_char) || (_char >= U'0' && _char <= U'9');
+    return IsIdentifierStart(_char) || IsNumerical(_char);
 }
