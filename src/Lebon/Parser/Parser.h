@@ -40,8 +40,6 @@ public:
 
 	std::unique_ptr<Program> Parse();
 
-	Error const& GetError() const { return m_error; }
-
 	void Synchronize();
 
 private:

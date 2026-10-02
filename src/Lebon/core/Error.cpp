@@ -103,8 +103,8 @@ ErrorManager* ErrorManager::GetErrorManager()
 
 void ErrorManager::Clear()
 {
-    if (m_instance)
-        delete m_instance;
+    delete m_instance;
+    m_instance = nullptr;
 }
 
 void ErrorManager::LogError(Error const& _error)

@@ -35,6 +35,8 @@ std::unique_ptr<Program> Parser::Parse()
 		{
 			Synchronize();
 			m_panic = false;
+			if (Check(TokenType::SCOPE_END))
+				Advance();
 			continue;           // on passe à l'instruction suivante
 		}
 

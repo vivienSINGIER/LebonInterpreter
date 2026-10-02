@@ -17,13 +17,16 @@ int main()
     lexer.Scan();
     lexer.DisplayTokens();
 
-    Parser parser(lexer.GetTokens());
-    std::unique_ptr<Program> program = parser.Parse();
-
-    if (program)
+    if (ErrorManager::HasErrors() == false)
     {
-        AstPrinter printer;         
-        printer.Print(*program);     
+        Parser parser(lexer.GetTokens());
+        std::unique_ptr<Program> program = parser.Parse();
+
+        if (program && ErrorManager::HasErrors() == false)
+        {
+            AstPrinter printer;
+            printer.Print(*program);
+        }
     }
 
     int errorCode = ErrorManager::Code();
