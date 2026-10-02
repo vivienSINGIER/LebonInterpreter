@@ -7,7 +7,9 @@
 #include "core/FileHelper.h"
 #include "Lexer/Lexer.h"
 #include "Lexer/Tokens.hpp"
-#include "Parser/Parser.h"
+#include "Parser/Parser.h" 
+#include "Parser/AST.h"
+#include "Parser/ASTPrinter.h"
 
 int main()
 {
@@ -15,8 +17,14 @@ int main()
     lexer.Scan();
     lexer.DisplayTokens();
 
-    Parser program = Parser(lexer.GetTokens());
-    program.Parse();
-    
+    Parser parser(lexer.GetTokens());
+    std::unique_ptr<Program> program = parser.Parse();
+
+    if (program)
+    {
+        AstPrinter printer;          // écrit sur std::cout par défaut
+        printer.Print(*program);     // équivalent à program->Accept(printer);
+    }
+
     return ErrorManager::Code();
 }
