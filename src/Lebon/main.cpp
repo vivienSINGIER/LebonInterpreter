@@ -26,8 +26,8 @@ int main()
 
     if (program)
     {
-        AstPrinter printer;          // écrit sur std::cout par défaut
-        printer.Print(*program);     // équivalent à program->Accept(printer);
+        AstPrinter printer;          // Ã©crit sur std::cout par dï¿½faut
+        printer.Print(*program);     // Ã©quivalent : program->Accept(printer);
     }
 
     return ErrorManager::Code();
