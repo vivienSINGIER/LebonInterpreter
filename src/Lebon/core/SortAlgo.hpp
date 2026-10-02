@@ -6,9 +6,16 @@
 #include <vector>
 #include <emmintrin.h>
 
-namespace SortAlgo
+#include "TestSortAlgo.hpp"
+
+namespace TestSortAlgo
 {
-    inline std::string Normalize(const std::string& s)
+    enum class TokenType;
+}
+
+namespace SortAlgoWNormalize
+{
+    __declspec(noinline)std::string Normalize(const std::string& s)
     {
         std::string r;
         r.reserve(s.size());
@@ -47,7 +54,7 @@ namespace SortAlgo
         return r;
     }
     
-    inline bool Less(const std::string& a, const std::string& b)
+    __declspec(noinline)bool Less(const std::string& a, const std::string& b)
     {
         std::string na = Normalize(a);
         std::string nb = Normalize(b);
@@ -58,14 +65,14 @@ namespace SortAlgo
         return a > b;
     }
     
-    inline void Swap(std::vector<std::string>& tab, int a, int b)
+    __declspec(noinline)void Swap(std::vector<std::string>& tab, int a, int b)
     {
         std::string temp = tab[a];
         tab[a] = tab[b];
         tab[b] = temp;
     }
     
-    inline void Sift(std::vector<std::string>& tab, int start, int node, int n)
+    __declspec(noinline)void Sift(std::vector<std::string>& tab, int start, int node, int n)
     {
         int k = node;
         int j = 2 * k;
@@ -87,7 +94,7 @@ namespace SortAlgo
         }
     }
     
-    inline void Heapsort(std::vector<std::string>& tab, int start, int end)
+    __declspec(noinline)void Heapsort(std::vector<std::string>& tab, int start, int end)
     {
         int lenght = end - start + 1;
         
@@ -101,7 +108,7 @@ namespace SortAlgo
         }
     }
     
-    inline void IntroSort(std::vector<std::string>& tab, int depthLimit, int min, int max)
+    __declspec(noinline)void IntroSort(std::vector<std::string>& tab, int depthLimit, int min, int max)
     {
         if (min >= max) return;
         if (depthLimit <= 0)
@@ -129,7 +136,7 @@ namespace SortAlgo
         IntroSort(tab, depthLimit - 1, i, max);
     }
     
-    inline void Sort(std::vector<std::string>& mots)
+    __declspec(noinline)void Sort(std::vector<std::string>& mots)
     {
         int n = static_cast<int>(mots.size());
         if (n < 2) return;
@@ -140,7 +147,7 @@ namespace SortAlgo
         IntroSort(mots, 2 * log2n, 0, n - 1);
     }
     
-    inline void Print(const std::vector<std::string>& tab)
+    __declspec(noinline)void Print(const std::vector<std::string>& tab)
     {
         std::cout << "| ";
         for (const std::string& s : tab)
@@ -151,7 +158,7 @@ namespace SortAlgo
     }
 }
 
-namespace SIMDSortAlgo
+namespace SIMDSortAlgoWNormalize
 {
     struct Entry
     {
@@ -161,7 +168,7 @@ namespace SIMDSortAlgo
     };
 
     
-    inline size_t NormalizeChar(const std::string& s, size_t i, char& out)
+    __declspec(noinline)size_t NormalizeChar(const std::string& s, size_t i, char& out)
     {
         unsigned char c = static_cast<unsigned char>(s[i]);
 
@@ -189,7 +196,7 @@ namespace SIMDSortAlgo
         return 1;
     }
 
-    inline std::string Normalize(const std::string& s)
+    __declspec(noinline)std::string Normalize(const std::string& s)
     {
         const size_t n = s.size();
         std::string r(n, '\0');         
@@ -225,7 +232,7 @@ namespace SIMDSortAlgo
         return r;
     }
 
-    inline uint64_t PrefixOf(const std::string& key)
+    __declspec(noinline)uint64_t PrefixOf(const std::string& key)
     {
         uint64_t p = 0;
         for (size_t i = 0; i < 8; ++i)
@@ -233,7 +240,7 @@ namespace SIMDSortAlgo
         return p;
     }
 
-    inline bool Less(const Entry& a, const Entry& b)
+    __declspec(noinline)bool Less(const Entry& a, const Entry& b)
     {
         if (a.prefix != b.prefix)
             return a.prefix < b.prefix;
@@ -245,14 +252,14 @@ namespace SIMDSortAlgo
         return a.word > b.word;       
     }
 
-    inline void Swap(std::vector<Entry>& tab, int a, int b)
+    __declspec(noinline)void Swap(std::vector<Entry>& tab, int a, int b)
     {
         Entry temp = tab[a];
         tab[a] = tab[b];
         tab[b] = temp;
     }
 
-    inline void Sift(std::vector<Entry>& tab, int start, int node, int n)
+    __declspec(noinline)void Sift(std::vector<Entry>& tab, int start, int node, int n)
     {
         int k = node;
         int j = 2 * k;
@@ -274,7 +281,7 @@ namespace SIMDSortAlgo
         }
     }
 
-    inline void Heapsort(std::vector<Entry>& tab, int start, int end)
+    __declspec(noinline)void Heapsort(std::vector<Entry>& tab, int start, int end)
     {
         int length = end - start + 1;
 
@@ -288,7 +295,7 @@ namespace SIMDSortAlgo
         }
     }
 
-    inline void IntroSort(std::vector<Entry>& tab, int depthLimit, int min, int max)
+    __declspec(noinline)void IntroSort(std::vector<Entry>& tab, int depthLimit, int min, int max)
     {
         if (min >= max) return;
         if (depthLimit <= 0)
@@ -316,7 +323,7 @@ namespace SIMDSortAlgo
         IntroSort(tab, depthLimit - 1, i, max);
     }
 
-    inline void Sort(std::vector<std::string>& mots)
+    __declspec(noinline)void Sort(std::vector<std::string>& mots)
     {
         int n = static_cast<int>(mots.size());
         if (n < 2) return;
@@ -338,7 +345,102 @@ namespace SIMDSortAlgo
             mots[i] = std::move(entries[i].word);
     }
 
-    inline void Print(const std::vector<std::string>& tab)
+    __declspec(noinline)void Print(const std::vector<std::string>& tab)
+    {
+        std::cout << "| ";
+        for (const std::string& s : tab)
+            std::cout << s << " | ";
+        std::cout << '\n';
+    }
+}
+
+namespace SortAlgo
+{
+    __declspec(noinline)bool Less(const std::string& a, const std::string& b)
+    {
+        return a < b;       
+    }
+
+    __declspec(noinline)void Swap(std::pair<std::string, TestSortAlgo::TokenType>* tab, int a, int b)
+    {
+        std::swap(tab[a], tab[b]);
+    }
+
+    __declspec(noinline)void Sift(std::pair<std::string, TestSortAlgo::TokenType>* tab, int start, int node, int n)
+    {
+        int k = node;
+        int j = 2 * k;
+        while (j <= n)
+        {
+            if (j < n && Less(tab[start + j - 1].first, tab[start + j].first))
+                j++;
+
+            if (Less(tab[start + k - 1].first, tab[start + j - 1].first))
+            {
+                Swap(tab, start + k - 1, start + j - 1);
+                k = j;
+                j = 2 * k;
+            }
+            else
+            {
+                j = n + 1;
+            }
+        }
+    }
+
+    __declspec(noinline)void Heapsort(std::pair<std::string, TestSortAlgo::TokenType>* tab, int start, int end)
+    {
+        int length = end - start + 1;
+
+        for (int i = length / 2; i >= 1; --i)
+            Sift(tab, start, i, length);
+
+        for (int i = length; i >= 2; --i)
+        {
+            Swap(tab, start + i - 1, start);
+            Sift(tab, start, 1, i - 1);
+        }
+    }
+
+    __declspec(noinline)void IntroSort(std::pair<std::string, TestSortAlgo::TokenType>* tab, int depthLimit, int min, int max)
+    {
+        if (min >= max) return;
+        if (depthLimit <= 0)
+        {
+            Heapsort(tab, min, max);
+            return;
+        }
+
+        int i = min, j = max;
+        std::string pivot = tab[(min + max) / 2].first;
+
+        while (i <= j)
+        {
+            while (Less(tab[i].first, pivot)) ++i;
+            while (Less(pivot, tab[j].first)) --j;
+            if (i <= j)
+            {
+                Swap(tab, i, j);
+                ++i;
+                --j;
+            }
+        }
+
+        IntroSort(tab, depthLimit - 1, min, j);
+        IntroSort(tab, depthLimit - 1, i, max);
+    }
+
+    __declspec(noinline)void Sort(std::pair<std::string, TestSortAlgo::TokenType>* tokens, size_t lenght)
+    {
+        int n = static_cast<int>(lenght);
+        if (n < 2) return;
+
+        int log2n = 0;
+        for (int m = n; m > 1; m >>= 1) log2n++;
+        IntroSort(tokens, 2 * log2n, 0, n - 1);
+    }
+
+    __declspec(noinline)void Print(const std::vector<std::string>& tab)
     {
         std::cout << "| ";
         for (const std::string& s : tab)
