@@ -321,7 +321,6 @@ namespace SIMDSortAlgo
         int n = static_cast<int>(mots.size());
         if (n < 2) return;
 
-        // 1. Normalisation unique de chaque mot
         std::vector<Entry> entries;
         entries.reserve(n);
         for (std::string& w : mots)
@@ -331,12 +330,10 @@ namespace SIMDSortAlgo
             entries.push_back({ std::move(w), std::move(key), p });
         }
 
-        // 2. Tri
         int log2n = 0;
         for (int m = n; m > 1; m >>= 1) log2n++;
         IntroSort(entries, 2 * log2n, 0, n - 1);
 
-        // 3. Retour au vector<string>
         for (int i = 0; i < n; ++i)
             mots[i] = std::move(entries[i].word);
     }
