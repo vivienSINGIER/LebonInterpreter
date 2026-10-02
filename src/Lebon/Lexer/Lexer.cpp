@@ -167,14 +167,12 @@ void Lexer::Number()
 {
     while (IsNumerical(Peek()))
         Advance();
-    
     if (Peek() == U'.' && IsNumerical(PeekAt(m_current + 1)))
     {
         Advance();
         while (IsNumerical(Peek()))
             Advance();
     }
-
     
     AddToken(TokenType::NUMBER);
 }
