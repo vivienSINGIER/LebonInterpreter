@@ -1,6 +1,6 @@
-fonksyon nom(param1, param2) 
+fonksyon nom(param1, param2)
 ouver
-    keksoz age ifér 18
-    keksoz nom saidon "Alice"
+    keksoz age ifé 18
+    keksoz nom saidonn "Alice"
     ala age
 fèrm

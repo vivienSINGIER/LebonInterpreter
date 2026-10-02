@@ -1,7 +1,15 @@
 #include "Parser.h"
 
-Parser::Parser(std::vector<Token> _tokens) : m_tokens(std::move(_tokens))
+Parser::Parser(std::vector<Token> _tokens)
 {
+	// Comments carry no meaning for the parser
+	m_tokens.reserve(_tokens.size() + 1);
+	for (Token& token : _tokens)
+	{
+		if (token.type != TokenType::COMMENT)
+			m_tokens.push_back(std::move(token));
+	}
+
 	if (m_tokens.empty() || m_tokens.back().type != TokenType::END_OF_FILE)
 	{
 		uint32_t row = m_tokens.empty() ? 1 : m_tokens.back().row;
@@ -16,8 +24,12 @@ std::unique_ptr<Program> Parser::Parse()
 {
 	auto program = MakeNode<Program>(Peek());
 
-	while (IsAtEnd() == false)
+	while (true)
 	{
+		SkipNewLines();
+		if (IsAtEnd())
+			break;
+
 		NodePtr stmt = Statement();
 
 		if (!stmt)
@@ -68,24 +80,27 @@ bool Parser::Fail(Token const& _at, std::string const& _message)
 {
 	if (error.IsOk())
 	{
-		error = Error::Syntax(_message + " (line " + std::to_string(_at.row)
-			+ ", column " + std::to_string(_at.column) + ")");
+		error = Error::Syntax(_message, _at.row, _at.column);
+		ErrorManager::LogError(error);
 	}
 	return false;
 }
 
 bool Parser::EndOfStatement()
 {
-	if (Match({TokenType::NEW_LINE, TokenType::END_OF_FILE, TokenType::SCOPE_END}))
-	{
+	if (Match({ TokenType::NEWLINE }))
 		return true;
-	}
-	return false;
+
+	// A block end or EOF also closes a statement, but belongs to the caller
+	if (Check(TokenType::SCOPE_END) || IsAtEnd())
+		return true;
+
+	return Fail(Peek(), "expected end of statement");
 }
 
 void Parser::SkipNewLines()
 {
-	Match({ TokenType::NEW_LINE });
+	while (Match({ TokenType::NEWLINE }));
 }
 
 NodePtr Parser::Statement()
@@ -137,7 +152,8 @@ NodePtr Parser::FuncDeclaration()
 			if (Consume(TokenType::IDENTIFIER, "expected parameter name") == false)
 				return nullptr;
 
-			func->params.push_back(Previous().literal);
+			Token const& param = Previous();
+			func->params.push_back({ param.literal, param.row, param.column });
 
 		} while (Match({ TokenType::COMMA }));
 	}
@@ -145,6 +161,7 @@ NodePtr Parser::FuncDeclaration()
 	if (Consume(TokenType::R_PARENTHESIS, "expected ')' after parameters") == false)
 		return nullptr;
 
+	SkipNewLines();
 	func->body = BlockStatement();
 
 	if (!func->body)
@@ -157,7 +174,8 @@ NodePtr Parser::ReturnStatement()
 {
 	auto ret = MakeNode<ReturnStmt>(Previous());
 
-	if (Check(TokenType::NEW_LINE) == false)
+	if (Check(TokenType::NEWLINE) == false && Check(TokenType::SCOPE_END) == false
+		&& IsAtEnd() == false)
 	{
 		ret->value = Expression();
 
@@ -177,8 +195,12 @@ std::unique_ptr<Block> Parser::BlockStatement()
 		return nullptr;
 	auto block = MakeNode<Block>(Previous());
 
-	while (Check(TokenType::SCOPE_END) == false && IsAtEnd() == false)
+	while (true)
 	{
+		SkipNewLines();
+		if (Check(TokenType::SCOPE_END) || IsAtEnd())
+			break;
+
 		NodePtr stmt = Statement();
 		if (!stmt)
 			return nullptr;
@@ -329,6 +351,12 @@ NodePtr Parser::Primary()
 		auto num = MakeNode<NumberLiteral>(Previous());
 		num->value = Previous().literal;
 		return num;
+	}
+	if (Match({ TokenType::STRING }))
+	{
+		auto str = MakeNode<StringLiteral>(Previous());
+		str->value = Previous().literal;
+		return str;
 	}
 	if (Match({ TokenType::TRUE }))
 	{

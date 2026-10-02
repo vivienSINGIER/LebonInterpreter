@@ -12,21 +12,25 @@
 /*
  * Grammaire :
  *
- * program     = { statement } END_OF_FILE ;
- * statement   = varDecl | funcDecl | returnStmt | block | exprStmt ;
- * varDecla     = VAR_DECLARATION IDENTIFIER [ ASSIGN expression ] NEW_LINE ;
- * funcDecla    = FUNC_DECLARATION IDENTIFIER "(" [ IDENTIFIER { "," IDENTIFIER } ] ")" block ;
- * returnStmt  = RETURN [ expression ] NEW_LINE ;
- * block       = SCOPE_START { statement } SCOPE_END ;
- * exprStmt    = expression NEW_LINE ;
+ * COMMENT tokens are dropped before parsing.
+ * Blank lines (NEWLINE*) are allowed between statements and before a function body.
  *
- * expression  = assignment ;
- * assignment  = IDENTIFIER ASSIGN assignment | additive ;
- * additive    = multiplicative { ( ADD | SUB ) multiplicative } ;
- * multi	   = unary { ( MUL | DIV ) unary } ;
- * unary       = SUB unary | call ;
- * call        = primary { "(" [ expression { "," expression } ] ")" } ;
- * primary     = NUMBER | TRUE | FALSE | IDENTIFIER | "(" expression ")" ;
+ * program        = { statement } END_OF_FILE ;
+ * statement      = varDecl | funcDecl | returnStmt | block | exprStmt ;
+ * varDecl        = VAR_DECLARATION IDENTIFIER [ ASSIGN expression ] end ;
+ * funcDecl       = FUNC_DECLARATION IDENTIFIER "(" [ IDENTIFIER { "," IDENTIFIER } ] ")" block ;
+ * returnStmt     = RETURN [ expression ] end ;
+ * block          = SCOPE_START { statement } SCOPE_END ;
+ * exprStmt       = expression end ;
+ * end            = NEWLINE | (before) SCOPE_END | (before) END_OF_FILE ;
+ *
+ * expression     = assignment ;
+ * assignment     = IDENTIFIER ASSIGN assignment | additive ;
+ * additive       = multiplicative { ( ADD | SUB ) multiplicative } ;
+ * multiplicative = unary { ( MUL | DIV ) unary } ;
+ * unary          = SUB unary | call ;
+ * call           = primary { "(" [ expression { "," expression } ] ")" } ;
+ * primary        = NUMBER | STRING | TRUE | FALSE | IDENTIFIER | "(" expression ")" ;
  */
 
 class Parser

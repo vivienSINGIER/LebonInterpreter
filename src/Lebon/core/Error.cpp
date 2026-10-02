@@ -1,7 +1,5 @@
 #include "core/Error.h"
 
-ErrorManager* ErrorManager::singleton = nullptr;
-
 namespace
 {
     char const* Label(Error::ErrorCode _code)
@@ -97,10 +95,9 @@ Error Error::Io(std::string _message, fs::path _path)
 
 ErrorManager* ErrorManager::GetErrorManager()
 {
-    if ( m_instance != nullptr )
-        delete m_instance;
-        
-    m_instance = new ErrorManager();
+    if (m_instance == nullptr)
+        m_instance = new ErrorManager();
+
     return m_instance;
 }
 

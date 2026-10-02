@@ -27,7 +27,7 @@ struct Error
     std::string message;
     std::vector<std::string> details;
     fs::path path;
-    uint32_t col, line;
+    uint32_t col = 0, line = 0;
     
     bool IsOk() const { return code == ErrorCode::Ok; }
     explicit operator bool() const { return !IsOk(); }
