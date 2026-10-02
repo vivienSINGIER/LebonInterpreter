@@ -156,13 +156,13 @@ NodePtr Parser::VarDeclaration()
 			return nullptr;
 	}
 		
-	if (Check({ TokenType::IDENTIFIER, TokenType::NUMBER}))
+	else if (Check({ TokenType::IDENTIFIER, TokenType::NUMBER, TokenType::STRING}))
 	{
 		Fail(Peek(), "expected assign operator");
 		return nullptr;
 	}
 
-	if (EndOfStatement() == false)
+	else if (EndOfStatement() == false)
 		return nullptr;
 
 	return decla;
