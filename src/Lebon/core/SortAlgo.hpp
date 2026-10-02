@@ -1,180 +1,352 @@
 #ifndef SORT_ALGO_HPP
 #define SORT_ALGO_HPP
 
-#include <algorithm>
-#include <ostream>
+#include <iostream>
 #include <string>
 #include <vector>
-#include <smmintrin.h> 
-
-#if defined(_MSC_VER)
-    #include <intrin.h>
-#endif
-
-static inline unsigned ctz32(unsigned x) 
-{
-#if defined(_MSC_VER)
-    unsigned long idx;
-    _BitScanForward(&idx, x);
-    return (unsigned)idx;
-#else
-    return (unsigned)__builtin_ctz(x);
-#endif
-}
-
-static const char* REPLI[64] = {
-    "a","a","a","a","a","a","ae","c","e","e","e","e","i","i","i","i",
-    "d","n","o","o","o","o","o","","o","u","u","u","u","y","th","ss",
-    "a","a","a","a","a","a","ae","c","e","e","e","e","i","i","i","i",
-    "d","n","o","o","o","o","o","","o","u","u","u","u","y","th","y"
-};
+#include <emmintrin.h>
 
 namespace SortAlgo
 {
-    struct Element
+    inline std::string Normalize(const std::string& s)
     {
-        uint64_t prefixe;  
-        uint32_t offset;   
-        uint32_t idx;       
-    };
-    
-    inline std::string BuildKeys(const std::string& mot)
-    {
-        std::string cle;
-        for (size_t i = 0; i < mot.size(); ++i)
-        {
-            unsigned char c = mot[i];
+        std::string r;
+        r.reserve(s.size());
 
-            if (c == 0xC3 && i + 1 < mot.size())         
+        for (size_t i = 0; i < s.size(); ++i)
+        {
+            unsigned char c = static_cast<unsigned char>(s[i]);
+
+            if (c == 0xC3 && i + 1 < s.size())
             {
-                unsigned char d = mot[++i];
-                if (d >= 0x80 && d <= 0xBF) cle += REPLI[d - 0x80];
-                else { cle += static_cast<char>(c); cle += static_cast<char>(d); } 
+                unsigned char d = static_cast<unsigned char>(s[i + 1]);
+                
+                if (d >= 0x80 && d <= 0x9E && d != 0x97)
+                    d += 0x20;
+
+                char base = 0;
+                if      (d >= 0xA0 && d <= 0xA5) base = 'a'; 
+                else if (d == 0xA7)              base = 'c'; 
+                else if (d >= 0xA8 && d <= 0xAB) base = 'e'; 
+                else if (d >= 0xAC && d <= 0xAF) base = 'i'; 
+                else if (d == 0xB1)              base = 'n'; 
+                else if (d >= 0xB2 && d <= 0xB6) base = 'o'; 
+                else if (d >= 0xB9 && d <= 0xBC) base = 'u'; 
+                else if (d == 0xBD || d == 0xBF) base = 'y'; 
+
+                if (base != 0)
+                {
+                    r += base;
+                    ++i;
+                    continue;
+                }
             }
-            else if (c == 0xC5 && i + 1 < mot.size()
-                     && static_cast<unsigned char>(mot[i + 1]) >= 0x92
-                     && static_cast<unsigned char>(mot[i + 1]) <= 0x93) 
+
+            r += static_cast<char>(std::tolower(c));
+        }
+        return r;
+    }
+    
+    inline bool Less(const std::string& a, const std::string& b)
+    {
+        std::string na = Normalize(a);
+        std::string nb = Normalize(b);
+
+        if (na != nb)
+            return na < nb;
+
+        return a > b;
+    }
+    
+    inline void Swap(std::vector<std::string>& tab, int a, int b)
+    {
+        std::string temp = tab[a];
+        tab[a] = tab[b];
+        tab[b] = temp;
+    }
+    
+    inline void Sift(std::vector<std::string>& tab, int start, int node, int n)
+    {
+        int k = node;
+        int j = 2 * k;
+        while (j <= n)
+        {
+            if ( j < n && Less(tab[start + j - 1], tab[start + j]))
+                j++;
+            
+            if (Less(tab[start + k - 1], tab[start + j - 1]))
             {
-                ++i;
-                cle += "oe";
+                Swap(tab, start + k - 1, start + j - 1);
+                k = j;
+                j = 2 * k;
             }
-            else if (c >= 'A' && c <= 'Z')
-                cle += static_cast<char>(c + 32);                  
             else
-                cle += static_cast<char>(c);
-        }
-
-        cle.resize((cle.size() / 16 + 1) * 16, '\0');
-        return cle;
-    }
-
-    inline int CompareSIMDKeys(const uint8_t* a, const uint8_t* b)
-    {
-        for (size_t i = 0; ; i += 16)
-        {
-            __m128i va = _mm_loadu_si128(reinterpret_cast<const __m128i*>(a + i));
-            __m128i vb = _mm_loadu_si128(reinterpret_cast<const __m128i*>(b + i));
-
-            unsigned egal = _mm_movemask_epi8(_mm_cmpeq_epi8(va, vb));
-
-            if (egal != 0xFFFF)                             
             {
-                unsigned pos = ctz32(~egal);     
-                return a[i + pos] < b[i + pos] ? -1 : 1;    
+                j = n + 1;
             }
-
-            unsigned zeros = _mm_movemask_epi8(_mm_cmpeq_epi8(va, _mm_setzero_si128()));
-            if (zeros) return 0;                           
         }
     }
-
-    struct Comparateur
-    {
-        const uint8_t*            arene;
-        const std::vector<std::string>* mots;
-
-        bool operator()(const Element& a, const Element& b) const
-        {
-            if (a.prefixe != b.prefixe)
-                return a.prefixe < b.prefixe;                  
-
-            int r = CompareSIMDKeys(arene + a.offset, arene + b.offset);
-            if (r != 0) return r < 0;
-
-            return (*mots)[a.idx] < (*mots)[b.idx];                
-        }
-    };
     
-    inline void Swap(std::vector<Element>& tab, int a, int b)
+    inline void Heapsort(std::vector<std::string>& tab, int start, int end)
     {
-        Element temp = tab[a];
+        int lenght = end - start + 1;
+        
+        for (int i = lenght / 2; i >= 1; --i)
+            Sift(tab, start, i, lenght);
+        
+        for (int i = lenght; i >= 2; --i)
+        {
+            Swap(tab, start + i - 1, start);
+            Sift(tab, start, 1, i - 1);
+        }
+    }
+    
+    inline void IntroSort(std::vector<std::string>& tab, int depthLimit, int min, int max)
+    {
+        if (min >= max) return;
+        if (depthLimit <= 0)
+        {
+            Heapsort(tab, min, max);
+            return;
+        }
+
+        int i = min, j = max;
+        std::string pivot = tab[(min + max) / 2];
+
+        while (i <= j)
+        {
+            while (Less(tab[i], pivot)) ++i;
+            while (Less(pivot, tab[j])) --j;
+            if (i <= j)
+            {
+                Swap(tab, i, j);
+                ++i;
+                --j;
+            }
+        }
+
+        IntroSort(tab, depthLimit - 1, min, j);
+        IntroSort(tab, depthLimit - 1, i, max);
+    }
+    
+    inline void Sort(std::vector<std::string>& mots)
+    {
+        int n = static_cast<int>(mots.size());
+        if (n < 2) return;
+
+        int log2n = 0;
+        for (int m = n; m > 1; m >>= 1) log2n++;
+
+        IntroSort(mots, 2 * log2n, 0, n - 1);
+    }
+    
+    inline void Print(const std::vector<std::string>& tab)
+    {
+        std::cout << "| ";
+        for (const std::string& s : tab)
+        {
+            std::cout << s << " | ";
+        }
+        std::cout << '\n';
+    }
+}
+
+namespace SIMDSortAlgo
+{
+    struct Entry
+    {
+        std::string word;    
+        std::string key;     
+        uint64_t    prefix;   
+    };
+
+    
+    inline size_t NormalizeChar(const std::string& s, size_t i, char& out)
+    {
+        unsigned char c = static_cast<unsigned char>(s[i]);
+
+        if (c == 0xC3 && i + 1 < s.size())
+        {
+            unsigned char d = static_cast<unsigned char>(s[i + 1]);
+            if (d >= 0x80 && d <= 0x9E && d != 0x97)
+                d += 0x20;
+
+            char base = 0;
+            if      (d >= 0xA0 && d <= 0xA5) base = 'a';
+            else if (d == 0xA7)              base = 'c';
+            else if (d >= 0xA8 && d <= 0xAB) base = 'e';
+            else if (d >= 0xAC && d <= 0xAF) base = 'i';
+            else if (d == 0xB1)              base = 'n';
+            else if (d >= 0xB2 && d <= 0xB6) base = 'o';
+            else if (d >= 0xB9 && d <= 0xBC) base = 'u';
+            else if (d == 0xBD || d == 0xBF) base = 'y';
+
+            if (base != 0) { out = base; return 2; }
+        }
+
+        if (c >= 'A' && c <= 'Z') c += 0x20;
+        out = static_cast<char>(c);
+        return 1;
+    }
+
+    inline std::string Normalize(const std::string& s)
+    {
+        const size_t n = s.size();
+        std::string r(n, '\0');         
+        size_t i = 0, o = 0;
+
+        const __m128i lo  = _mm_set1_epi8('A' - 1);
+        const __m128i hi  = _mm_set1_epi8('Z' + 1);
+        const __m128i bit = _mm_set1_epi8(0x20);
+
+        while (i < n)
+        {
+            if (i + 16 <= n)
+            {
+                __m128i v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data() + i));
+
+                if (_mm_movemask_epi8(v) == 0)
+                {
+                    __m128i isUpper = _mm_and_si128(_mm_cmpgt_epi8(v, lo),
+                                                    _mm_cmplt_epi8(v, hi));
+                    v = _mm_or_si128(v, _mm_and_si128(isUpper, bit));
+                    _mm_storeu_si128(reinterpret_cast<__m128i*>(&r[o]), v);
+                    i += 16;
+                    o += 16;
+                    continue;
+                }
+            }
+            char c;
+            i += NormalizeChar(s, i, c);
+            r[o++] = c;
+        }
+
+        r.resize(o);
+        return r;
+    }
+
+    inline uint64_t PrefixOf(const std::string& key)
+    {
+        uint64_t p = 0;
+        for (size_t i = 0; i < 8; ++i)
+            p = (p << 8) | (i < key.size() ? static_cast<unsigned char>(key[i]) : 0);
+        return p;
+    }
+
+    inline bool Less(const Entry& a, const Entry& b)
+    {
+        if (a.prefix != b.prefix)
+            return a.prefix < b.prefix;
+
+        int c = a.key.compare(b.key);
+        if (c != 0)
+            return c < 0;
+
+        return a.word > b.word;       
+    }
+
+    inline void Swap(std::vector<Entry>& tab, int a, int b)
+    {
+        Entry temp = tab[a];
         tab[a] = tab[b];
         tab[b] = temp;
     }
 
-    template <class Cmp>
-    void Sift(std::vector<Element>& tab, size_t start, size_t node, size_t n, Cmp inf)
+    inline void Sift(std::vector<Entry>& tab, int start, int node, int n)
     {
-        while (true)
+        int k = node;
+        int j = 2 * k;
+        while (j <= n)
         {
-            size_t child = 2 * node + 1;
-            if (child >= n) break;
+            if (j < n && Less(tab[start + j - 1], tab[start + j]))
+                j++;
 
-            if (child + 1 < n && inf(tab[start + child], tab[start + child + 1]))
-                ++child;
-
-            if (!inf(tab[start + node], tab[start + child]))
-                break;
-
-            swap(tab, start + node, start + child);
-            node = child;
+            if (Less(tab[start + k - 1], tab[start + j - 1]))
+            {
+                Swap(tab, start + k - 1, start + j - 1);
+                k = j;
+                j = 2 * k;
+            }
+            else
+            {
+                j = n + 1;
+            }
         }
     }
 
-    inline uint64_t PrefixOf(const std::string& cle) 
+    inline void Heapsort(std::vector<Entry>& tab, int start, int end)
     {
-        uint64_t p = 0;
-        for (int i = 0; i < 8; ++i)
-            p = (p << 8) | static_cast<unsigned char>(cle[i]);
-        return p;
-    }
-    
-    inline void InsertionSort(std::vector<std::string>& tab, size_t start, size_t end)
-    {
-        for (size_t i = start + 1; i < end; ++i)
+        int length = end - start + 1;
+
+        for (int i = length / 2; i >= 1; --i)
+            Sift(tab, start, i, length);
+
+        for (int i = length; i >= 2; --i)
         {
-            std::string x = tab[i];
-            size_t j = i;
-            while (j > start && x < tab[j - 1])
+            Swap(tab, start + i - 1, start);
+            Sift(tab, start, 1, i - 1);
+        }
+    }
+
+    inline void IntroSort(std::vector<Entry>& tab, int depthLimit, int min, int max)
+    {
+        if (min >= max) return;
+        if (depthLimit <= 0)
+        {
+            Heapsort(tab, min, max);
+            return;
+        }
+
+        int i = min, j = max;
+        Entry pivot = tab[(min + max) / 2];
+
+        while (i <= j)
+        {
+            while (Less(tab[i], pivot)) ++i;
+            while (Less(pivot, tab[j])) --j;
+            if (i <= j)
             {
-                tab[j] = tab[j - 1];
+                Swap(tab, i, j);
+                ++i;
                 --j;
             }
-            tab[j] = x;
         }
+
+        IntroSort(tab, depthLimit - 1, min, j);
+        IntroSort(tab, depthLimit - 1, i, max);
     }
-    
-    inline void WordsSort(std::vector<std::string>& mots)
-    {
-        std::vector<uint8_t> arene;
-        std::vector<Element> elems;
-        elems.reserve(mots.size());
 
-        for (uint32_t i = 0; i < mots.size(); ++i)
+    inline void Sort(std::vector<std::string>& mots)
+    {
+        int n = static_cast<int>(mots.size());
+        if (n < 2) return;
+
+        // 1. Normalisation unique de chaque mot
+        std::vector<Entry> entries;
+        entries.reserve(n);
+        for (std::string& w : mots)
         {
-            std::string cle = BuildKeys(mots[i]);
-            elems.push_back({ PrefixOf(cle), static_cast<uint32_t>(arene.size()), i });
-            arene.insert(arene.end(), cle.begin(), cle.end());
+            std::string key = Normalize(w);
+            uint64_t p = PrefixOf(key);
+            entries.push_back({ std::move(w), std::move(key), p });
         }
 
-        Comparateur inf{ arene.data(), &mots };  
+        // 2. Tri
+        int log2n = 0;
+        for (int m = n; m > 1; m >>= 1) log2n++;
+        IntroSort(entries, 2 * log2n, 0, n - 1);
 
-        std::sort(elems.begin(), elems.end(), inf);
+        // 3. Retour au vector<string>
+        for (int i = 0; i < n; ++i)
+            mots[i] = std::move(entries[i].word);
+    }
 
-        std::vector<std::string> res;
-        res.reserve(mots.size());
-        for (const Element& e : elems) res.push_back(std::move(mots[e.idx]));
-        mots = std::move(res);
+    inline void Print(const std::vector<std::string>& tab)
+    {
+        std::cout << "| ";
+        for (const std::string& s : tab)
+            std::cout << s << " | ";
+        std::cout << '\n';
     }
 }
 
