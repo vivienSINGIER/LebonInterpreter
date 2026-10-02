@@ -8,6 +8,22 @@
 
 #include "../Lexer/Tokens.hpp"
 
+struct NumberLiteral;
+struct StringLiteral;
+struct BooleanLiteral;
+struct Identifier;
+struct UnaryExpr;
+struct BinaryExpr;
+struct AssignExpr;
+struct CallExpr;
+struct VarDecl;
+struct ExprStmt;
+struct ReturnStmt;
+struct Block;
+struct Param;
+struct FuncDecl;
+struct Program;
+
 struct Visitor
 {
 	virtual ~Visitor() = default;
@@ -23,7 +39,6 @@ struct Visitor
 	virtual void Visit(ExprStmt&) = 0;
 	virtual void Visit(ReturnStmt&) = 0;
 	virtual void Visit(Block&) = 0;
-	virtual void Visit(Param&) = 0;
 	virtual void Visit(FuncDecl&) = 0;
 	virtual void Visit(Program&) = 0;
 };

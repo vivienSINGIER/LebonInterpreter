@@ -5,7 +5,6 @@
 
 #include "AST.h"
 
-// Debug visitor: dumps the tree as an indented outline
 class AstPrinter : public Visitor
 {
 public:
