@@ -50,6 +50,7 @@ class ErrorManager
 
 public:
     static ErrorManager* GetErrorManager();
+    static void Clear();
 
     static void LogError(Error const& _error);
     static int Code();
@@ -58,7 +59,5 @@ public:
     static size_t Count() { return Errors().size(); }
     static bool HasErrors() { return Count() > 0; }
 };
-
-
 
 #endif

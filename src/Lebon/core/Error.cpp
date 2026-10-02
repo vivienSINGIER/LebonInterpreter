@@ -101,6 +101,12 @@ ErrorManager* ErrorManager::GetErrorManager()
     return m_instance;
 }
 
+void ErrorManager::Clear()
+{
+    if (m_instance)
+        delete m_instance;
+}
+
 void ErrorManager::LogError(Error const& _error)
 {
     if (!_error)

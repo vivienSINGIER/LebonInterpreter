@@ -26,5 +26,8 @@ int main()
         printer.Print(*program);     
     }
 
-    return ErrorManager::Code();
+    int errorCode = ErrorManager::Code();
+    ErrorManager::Clear();
+
+    return errorCode;
 }
