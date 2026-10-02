@@ -46,14 +46,17 @@ struct Error
 class ErrorManager
 {
     inline static ErrorManager* m_instance = nullptr;
-    uint16_t m_numberOfErrors = 0;
-    int m_firstCode = 0;
+    std::vector<Error> m_errors;
 
 public:
     static ErrorManager* GetErrorManager();
-    
+
     static void LogError(Error const& _error);
     static int Code();
+
+    static std::vector<Error> const& Errors() { return GetErrorManager()->m_errors; }
+    static size_t Count() { return Errors().size(); }
+    static bool HasErrors() { return Count() > 0; }
 };
 
 

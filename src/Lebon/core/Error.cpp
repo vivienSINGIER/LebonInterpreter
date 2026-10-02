@@ -103,17 +103,16 @@ ErrorManager* ErrorManager::GetErrorManager()
 
 void ErrorManager::LogError(Error const& _error)
 {
-    ErrorManager* m = ErrorManager::GetErrorManager();
     if (!_error)
         return;
-        
+
     Log::Log(LogType::Error, _error.Format());
-    if (m->m_numberOfErrors == 0)
-        m->m_firstCode = static_cast<int>(_error.code);
-    m->m_numberOfErrors++;
+    Log::Log(LogType::Prompt, "\n");
+    GetErrorManager()->m_errors.push_back(_error);
 }
 
 int ErrorManager::Code()
 {
-    return GetErrorManager()->m_firstCode;   
+    auto const& e = Errors();
+    return e.empty() ? 0 : static_cast<int>(e.front().code);
 }
