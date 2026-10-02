@@ -6,28 +6,52 @@
 
 #include "Tokens.hpp"
 
+#include "../core/FileHelper.h"
 
 class Lexer
 {
 public:
+    Lexer(fs::path const& _path);
     Lexer(std::string const& input);
     
     std::vector<Token> const& GetTokens();
     
-    bool IsAtEnd();
-    char Advance();
+    void Scan();
+    void DisplayTokens();
     
+private:
+    std::string m_content; 
+    std::vector<Token> m_tokens;
+    
+    bool m_isCommented = false;
+    
+    size_t m_current;
+    size_t m_start;
+    
+    uint32_t m_startLine;
+    uint32_t m_startColumn;
+    uint32_t m_line;
+    uint32_t m_column;
+    
+    void Comment();
+    void String();
+    void Number();
+    void Identifier();
     void ScanToken();
     void AddToken(TokenType _type);
     
-private:
-    std::string const m_content; 
-    std::vector<Token> m_tokens;
+    bool IsAtEnd();
+    char32_t Advance();
+    char32_t Peek();
+    char32_t PeekAt(size_t _pos);
+    bool Match(char32_t _expected);
     
-    uint64_t m_current;
-    uint64_t m_start;
-    uint64_t m_line;
-    uint64_t m_column;
+    char32_t DecodeAt(size_t _pos, size_t& _length);
+    
+    bool IsAlphabetical(char32_t _char);
+    bool IsNumerical(char32_t _char);
+    bool IsIdentifierStart(char32_t _char);
+    bool IsIdentifierPart(char32_t _char);
 };
 
 #endif

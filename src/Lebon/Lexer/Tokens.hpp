@@ -5,11 +5,11 @@
 #include <string_view>
 #include <vector>
 
-enum TokenType : int
+enum class TokenType : int
 {
     // SINGLE CHARACTER
-    QUOTE, DOUBLE_QUOTE, L_PARENTHESIS, R_PARENTHESIS,
-    DOT, COMMA, NEW_LINE,
+    L_PARENTHESIS, R_PARENTHESIS,
+    DOT, COMMA, NEWLINE,
  
     // LITTERALS
     IDENTIFIER, NUMBER, STRING, COMMENT,
@@ -31,18 +31,16 @@ struct Token
     uint32_t row, column;
 };
 
-static std::pair<char, TokenType> tokenSingleLetters[] = {
-    { '\'', TokenType::QUOTE },
-    { '\"', TokenType::DOUBLE_QUOTE },
+static std::pair<char, TokenType> g_tokenSingleLetters[] = {
     { '(', TokenType::L_PARENTHESIS },
     { ')', TokenType::R_PARENTHESIS },
     { '.', TokenType::DOT },
     { ',', TokenType::COMMA },
-    {'\n', TokenType::NEW_LINE },
+    {'\n', TokenType::NEWLINE },
     {'\0', TokenType::END_OF_FILE },
 };
 
-static std::pair<std::string, TokenType> tokenKeywords[] = {
+static std::pair<std::string, TokenType> g_tokenKeywords[] = {
     { "keksoz", TokenType::VAR_DECLARATION },
     { "bazar", TokenType::VAR_DECLARATION },
 
@@ -93,6 +91,15 @@ static std::pair<std::string, TokenType> tokenKeywords[] = {
     { "ifé", TokenType::ASSIGN },
     { "lé", TokenType::ASSIGN },
     { "saidonn", TokenType::ASSIGN },
+};
+
+static std::string g_tokenTypeNames[] = {
+    "L-Parenthesis", "R-Parenthesis",
+    "Dot", "Comma", "Newline", 
+    "Identifier", "Number", "String", "Comment", 
+    "Variable", "Function", "ScopeStart", "ScopeEnd",
+    "Return", "CommentStart", "CommentEnd", "true", "false",
+    "Add", "Sub", "Mul", "Div", "Assign", "End of File"
 };
 
 #endif
