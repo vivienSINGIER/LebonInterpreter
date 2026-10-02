@@ -314,10 +314,12 @@ bool Lexer::IsNumerical(char32_t _char)
 
 bool Lexer::IsIdentifierStart(char32_t _char)
 {
-    return IsAlphabetical(_char) || _char == U'_';
+    unsigned char uc = static_cast<unsigned char>(_char);
+    return IsAlphabetical(uc) || uc == U'_' || uc >= 0x80;
 }
 
 bool Lexer::IsIdentifierPart(char32_t _char)
 {
-    return IsIdentifierStart(_char) || IsNumerical(_char);
+    unsigned char uc = static_cast<unsigned char>(_char);
+    return IsIdentifierStart(uc) || IsNumerical(uc) || uc >= 0x80;
 }
