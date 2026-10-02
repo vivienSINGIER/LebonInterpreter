@@ -50,9 +50,9 @@ private:
 	// Token primitives
 	Token const& Peek() const;
 	Token const& Previous() const;
+	Token const& Advance();
 	bool IsAtEnd() const;
 	bool Check(TokenType _type) const;
-	Token const& Advance();
 	bool Match(std::initializer_list<TokenType> _types);
 	bool Consume(TokenType _type, std::string const& _message);
 	bool Fail(Token const& _at, std::string const& _message);

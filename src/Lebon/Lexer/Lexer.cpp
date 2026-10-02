@@ -168,7 +168,6 @@ void Lexer::Number()
     while (IsNumerical(Peek()))
         Advance();
 
-    // Fractional part: only when a digit follows the dot, so '1.' stays NUMBER DOT
     if (Peek() == U'.' && IsNumerical(PeekAt(m_current + 1)))
     {
         Advance();
