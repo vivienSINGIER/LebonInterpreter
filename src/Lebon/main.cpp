@@ -21,14 +21,20 @@ int main()
     lexer.Scan();
     lexer.DisplayTokens();
 
-    Parser parser(lexer.GetTokens());
-    std::unique_ptr<Program> program = parser.Parse();
-
-    if (program)
+    if (ErrorManager::HasErrors() == false)
     {
-        AstPrinter printer;          // écrit sur std::cout par d�faut
-        printer.Print(*program);     // équivalent : program->Accept(printer);
+        Parser parser(lexer.GetTokens());
+        std::unique_ptr<Program> program = parser.Parse();
+
+        if (program && ErrorManager::HasErrors() == false)
+        {
+            AstPrinter printer;
+            printer.Print(*program);
+        }
     }
 
-    return ErrorManager::Code();
+    int errorCode = ErrorManager::Code();
+    ErrorManager::Clear();
+
+    return errorCode;
 }

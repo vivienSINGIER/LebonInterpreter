@@ -40,12 +40,13 @@ public:
 
 	std::unique_ptr<Program> Parse();
 
-	Error const& GetError() const { return error; }
+	void Synchronize();
 
 private:
 	std::vector<Token> m_tokens;
 	size_t current = 0;
-	Error error;
+	Error m_error;
+	bool m_panic = false;
 
 	// Token primitives
 	Token const& Peek() const;
@@ -53,6 +54,7 @@ private:
 	Token const& Advance();
 	bool IsAtEnd() const;
 	bool Check(TokenType _type) const;
+	bool Check(std::initializer_list<TokenType> _types) const;
 	bool Match(std::initializer_list<TokenType> _types);
 	bool Consume(TokenType _type, std::string const& _message);
 	bool Fail(Token const& _at, std::string const& _message);
