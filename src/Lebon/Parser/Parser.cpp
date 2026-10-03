@@ -31,19 +31,46 @@ std::unique_ptr<Program> Parser::Parse()
 			break;
 
 		NodePtr stmt = Statement();
-
 		if (!stmt)
-			return nullptr;
+		{
+			Synchronize();
+			m_panic = false;
+			if (Check(TokenType::SCOPE_END))
+				Advance();
+			continue;           // on passe à l'instruction suivante
+		}
 
 		program->statements.push_back(std::move(stmt));
 	}
 	return program;
 }
 
+void Parser::Synchronize()
+{
+	while (IsAtEnd() == false)
+	{
+		if (Match({ TokenType::NEWLINE }))
+			return;
+		if (Check(TokenType::SCOPE_END))
+			return;
+		Advance();
+	}
+}
+
 Token const& Parser::Peek() const { return m_tokens[current]; }
 Token const& Parser::Previous() const { return m_tokens[current - 1]; }
 bool Parser::IsAtEnd() const { return Peek().type == TokenType::END_OF_FILE; }
 bool Parser::Check(TokenType _type) const { return Peek().type == _type; }
+
+bool Parser::Check(std::initializer_list<TokenType> _types) const
+{
+	for (TokenType type : _types)
+	{
+		if (Check(type))
+			return true;
+	}
+	return false;
+}
 
 Token const& Parser::Advance()
 {
@@ -78,11 +105,13 @@ bool Parser::Consume(TokenType _type, std::string const& _message)
 
 bool Parser::Fail(Token const& _at, std::string const& _message)
 {
-	if (error.IsOk())
-	{
-		error = Error::Syntax(_message, _at.row, _at.column);
-		ErrorManager::LogError(error);
-	}
+	if (m_panic)
+		return false;
+
+	m_panic = true;
+	m_error = Error::Syntax(_message, _at.row, _at.column);
+	ErrorManager::LogError(m_error);
+
 	return false;
 }
 
@@ -91,7 +120,6 @@ bool Parser::EndOfStatement()
 	if (Match({ TokenType::NEWLINE }))
 		return true;
 
-	// A block end or EOF also closes a statement, but belongs to the caller
 	if (Check(TokenType::SCOPE_END) || IsAtEnd())
 		return true;
 
@@ -127,8 +155,14 @@ NodePtr Parser::VarDeclaration()
 		if (!decla->init)
 			return nullptr;
 	}
+		
+	else if (Check({ TokenType::IDENTIFIER, TokenType::NUMBER, TokenType::STRING}))
+	{
+		Fail(Peek(), "expected assign operator");
+		return nullptr;
+	}
 
-	if (EndOfStatement() == false)
+	else if (EndOfStatement() == false)
 		return nullptr;
 
 	return decla;
@@ -203,12 +237,18 @@ std::unique_ptr<Block> Parser::BlockStatement()
 
 		NodePtr stmt = Statement();
 		if (!stmt)
-			return nullptr;
+		{
+			Synchronize();
+			m_panic = false;
+			continue;        
+		}
+
 		block->statements.push_back(std::move(stmt));
 	}
 
 	if (Consume(TokenType::SCOPE_END, "expected end of block") == false)
 		return nullptr;
+
 	return block;
 }
 
