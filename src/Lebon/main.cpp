@@ -5,7 +5,7 @@
 int main()
 {
     SetConsoleOutputCP(CP_UTF8);
-    TestSortAlgo::RunTest();
+    TestSortAlgo::RunBenchmarkSearch();
     std::cin >> std::ws;
     return 0;
 }
