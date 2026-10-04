@@ -1,0 +1,42 @@
+koz Parsing : expressions, calls and statements finkoz
+
+zafer addition(a, b)
+ouver
+    ran a èk b
+fèrm
+
+keksoz x idon 4
+keksoz y idon 2
+
+koz error : expected expression, an operator needs a right side finkoz
+keksoz somme idon x èk
+keksoz produi idon x fwa
+
+koz error : expected expression, this operator cannot start an expression finkoz
+keksoz moitié idon koup 2
+
+koz error : expected ')' after expression finkoz
+keksoz group idon (x èk y fwa 2
+
+koz error : expected ')' after arguments finkoz
+afise(addition(x y))
+afise(addition(x, y)
+
+koz error : expected expression, the last argument is empty finkoz
+afise(addition(x, ))
+
+koz error : expected end of statement, two statements on one line finkoz
+x idon 5 y idon 6
+afise(x) afise(y)
+
+zafer dernié()
+ouver
+    koz error : expected end of statement, inside a block finkoz
+    ran x y
+    koz error : expected expression, the parser recovers and keeps reading the block finkoz
+    keksoz z idon
+    ran z
+fèrm
+
+koz error : expected expression, a scope end with no scope to close finkoz
+fèrm

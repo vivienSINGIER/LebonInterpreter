@@ -8,7 +8,7 @@ namespace Semantics
 {
     enum class SymbolType
     {
-        Function, Param, LocalVariable, BuiltIn, GlobalVariable
+        Function, Param, GlobalVariable, LocalVariable
     };
     
     enum class InferredType
@@ -24,16 +24,23 @@ namespace Semantics
     struct ParamInfo
     {
         std::string name;
+        InferredType type;
+        uint32_t row;
+        uint32_t column;
     };
     
     struct SymbolInfo
     {
         SymbolType type;
+        InferredType infType;
         std::string name;
-        int line = 0;
-        int column = 0;
         
-        int arity = 0;
+        uint32_t line = 0;
+        uint32_t column = 0;
+        
+        bool isInitialized = false;
+        bool isBuiltIn = false;
+        
         std::vector<ParamInfo> paramInfo;
     };
     
@@ -41,15 +48,16 @@ namespace Semantics
     {
         ScopeType type;
         std::unordered_map<std::string, SymbolInfo> symbols;
+        std::string funcName;
     };
     
     struct ScopeStack
     {
         std::vector<Scope> scopes;
         
-        void Push(ScopeType _type)
+        void Push(ScopeType _type, std::string const& _funcName = "")
         {
-            scopes.push_back(Scope{_type, {}});
+            scopes.push_back(Scope{_type, {}, _funcName});
         }
         
         void Pop()

@@ -135,7 +135,7 @@ void Lexer::Comment()
         Advance();
     }
     
-    Error e = Error::Lexical("unterminated comment, missing 'finkoz'\n", m_startLine, m_startColumn);
+    Error e = Error::Lexical("unterminated comment, missing 'finkoz'", m_startLine, m_startColumn);
     ErrorManager::LogError(e);
 }
 
@@ -149,7 +149,7 @@ void Lexer::String()
     if (Peek() != U'\"')
     {
         std::string raw = m_content.substr(m_start, m_current - m_start);
-        Error e = Error::Lexical(std::string("unterminated string '") + raw + "'\n", m_line, startColumn);
+        Error e = Error::Lexical(std::string("unterminated string '") + raw + "'", m_line, startColumn);
         ErrorManager::LogError(e);
         return;
     }
@@ -195,7 +195,7 @@ void Lexer::Identifier()
             }
             if (token.second == TokenType::COMMENT_END)
             {
-                Error e = Error::Lexical("'finkoz' without matching 'koz'\n", m_startLine, m_startColumn);
+                Error e = Error::Lexical("'finkoz' without matching 'koz'", m_startLine, m_startColumn);
                 ErrorManager::LogError(e);
                 return;
             }
@@ -258,7 +258,7 @@ void Lexer::ScanToken()
     }
     
     std::string raw = m_content.substr(m_start, m_current - m_start);
-    Error e = Error::Lexical(std::string("unknown token '") + raw + "'\n", m_line, m_column);
+    Error e = Error::Lexical(std::string("unknown token '") + raw + "'", m_line, m_column);
     ErrorManager::LogError(e);
 }
 

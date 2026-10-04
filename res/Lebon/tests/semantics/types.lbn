@@ -1,0 +1,48 @@
+koz Semantics : types finkoz
+
+keksoz age idon 20
+keksoz nom idon "Alice"
+keksoz majèr idon vré
+
+koz error : the type of a variable is fixed by its first value finkoz
+age idon "vin"
+nom idon 42
+majèr idon 1
+
+koz error : same rule when the first value comes after the declaration finkoz
+keksoz pri
+pri idon 12.5
+pri idon "shèr"
+
+koz error : addition needs two numbers or two strings finkoz
+keksoz mélanz idon nom èk age
+keksoz kont idon 1 èk "1"
+keksoz bool idon majèr èk majèr
+keksoz boolnom idon vré azout "oui"
+
+koz error : the other operators only accept numbers finkoz
+keksoz a idon nom mwin 1
+keksoz b idon 2 fwa "2"
+keksoz c idon majèr koup 2
+keksoz d idon "dis" partaz "dé"
+
+koz error : unary minus only accepts a number finkoz
+keksoz e idon mwin nom
+keksoz f idon mwin fo
+
+koz error : a call result has the type the function returns finkoz
+zafer karé(n)
+ouver
+    ran n fwa n
+fèrm
+nom idon karé(3)
+
+koz no error : ki is unknown, so the result of salu is unknown too finkoz
+zafer salu(ki)
+ouver
+    ran "Bonzour " èk ki
+fèrm
+age idon salu(nom)
+
+koz error : only the wrong operation is reported, its result stays usable finkoz
+keksoz g idon (nom fwa 2) èk 1

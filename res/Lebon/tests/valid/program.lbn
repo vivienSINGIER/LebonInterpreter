@@ -1,0 +1,51 @@
+koz Valid : a small complete program, a shop receipt finkoz
+
+keksoz boutik idon "Sé Lebon"
+keksoz tva idon 0.085
+keksoz kliyan idon "Nathan"
+
+zafer soutotal(pri, kantité)
+ouver
+    ran pri fwa kantité
+fèrm
+
+zafer taks(montan)
+ouver
+    ran montan fwa tva
+fèrm
+
+zafer total(pri, kantité)
+ouver
+    keksoz ht idon soutotal(pri, kantité)
+    ran ht èk taks(ht)
+fèrm
+
+zafer tit(non)
+ouver
+    ran "Kliyan : " èk non
+fèrm
+
+zafer mwayen(a, b, c)
+ouver
+    keksoz som idon a èk b èk c
+    ran som koup 3
+fèrm
+
+keksoz letshi idon total(4.5, 2)
+keksoz mang idon total(1.2, 6)
+keksoz zanana idon total(3, 1)
+
+keksoz gran idon letshi èk mang èk zanana
+keksoz moy idon mwayen(letshi, mang, zanana)
+
+koz a discount, applied only once finkoz
+keksoz remiz idon 2
+gran idon gran mwin remiz
+
+afise(boutik)
+afise(tit(kliyan))
+afise(letshi)
+afise(mang)
+afise(zanana)
+afise(gran)
+afise(moy)

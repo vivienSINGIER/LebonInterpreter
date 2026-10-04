@@ -1,0 +1,46 @@
+koz Semantics : names and scopes finkoz
+
+keksoz nom idon "Alice"
+keksoz age idon 20
+
+koz error : duplicate variable declaration in the same scope finkoz
+keksoz age idon 21
+
+koz error : unknown identifier, the variable was never declared finkoz
+afise(vil)
+keksoz total idon age èk bonus
+
+koz error : unknown identifier, a variable cannot be used in its own declaration finkoz
+keksoz konter idon konter èk 1
+
+koz error : assignment to a variable that was never declared finkoz
+pri idon 12.5
+
+koz error : uninitialized variable, declared without a value and read before any assignment finkoz
+keksoz vid
+afise(vid)
+
+koz no error : once assigned, the variable can be read finkoz
+keksoz plin
+plin idon 3
+afise(plin)
+
+koz error : unknown identifier, a variable declared in a block is gone after the block finkoz
+ouver
+    keksoz sekré idon 42
+    afise(sekré)
+fèrm
+afise(sekré)
+
+koz no error : an inner block can declare the same name again finkoz
+ouver
+    keksoz nom idon "Bob"
+    afise(nom)
+fèrm
+
+zafer double(n)
+ouver
+    koz error : a parameter and a local variable share the same scope finkoz
+    keksoz n idon 2
+    ran n fwa 2
+fèrm

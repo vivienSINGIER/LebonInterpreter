@@ -1,0 +1,25 @@
+koz Parsing : variable declarations finkoz
+
+keksoz nom idon "Alice"
+bazar age idon 20
+keksoz vid
+
+koz error : expected variable name, a number is not a name finkoz
+keksoz 42 idon 1
+
+koz error : expected variable name, the name is missing finkoz
+bazar idon 5
+
+koz error : expected variable name, a keyword cannot be a name finkoz
+keksoz ran idon 3
+
+koz error : expected assign operator finkoz
+keksoz pri 12.5
+keksoz vil "Saint-Pierre"
+keksoz kopi nom
+
+koz error : expected expression, nothing follows the assign word finkoz
+keksoz total idon
+
+koz error : expected end of statement, two declarations on one line finkoz
+keksoz x keksoz y

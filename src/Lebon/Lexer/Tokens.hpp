@@ -5,6 +5,10 @@
 #include <string_view>
 #include <vector>
 
+// Source files are read as UTF-8, without this MSVC stores the accented keywords
+// in the system code page and they never match
+#pragma execution_character_set("utf-8")
+
 enum class TokenType : int
 {
     // SINGLE CHARACTER
