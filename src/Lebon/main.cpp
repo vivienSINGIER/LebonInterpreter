@@ -7,16 +7,32 @@
 #include "Parser/AST.h"
 #include "Parser/ASTPrinter.h"
 #include "Semantics/Analyser.h"
+#include "Compiler/Compiler.h"
+#include "Bytecode/BytecodeTests.h"
+#include "Bytecode/Disassembler.h"
+
+#include <algorithm>
+#include <iostream>
+#include <sstream>
 
 #include <windows.h>
 
 namespace
 {
-    // Runs the lexer, the parser and the analyser on one file.
+    struct Outcome
+    {
+        Error::ErrorCode code = Error::ErrorCode::Ok;
+        std::string firstError;      // the first error logged, empty if none
+        std::string disassembly;     // only filled when the file was compiled
+    };
+
+    // Runs the lexer, the parser, the analyser and the compiler on one file.
     // A stage only runs if the previous ones logged no error.
     // Returns the code of the first error, Ok if the file went through.
-    Error::ErrorCode RunFile(fs::path const& _path, bool _verbose)
+    Outcome RunPipeline(fs::path const& _path, bool _verbose)
     {
+        Outcome outcome;
+
         Lexer lexer(_path);
         lexer.Scan();
         if (_verbose)
@@ -38,22 +54,226 @@ namespace
                     AstPrinter printer;
                     printer.Print(*program);
                 }
+
+                if (ErrorManager::HasErrors() == false)
+                {
+                    Bytecode::Heap heap;
+                    Bytecode::Compiler compiler(heap);
+                    std::unique_ptr<Bytecode::Prototype> main = compiler.Compile(*program);
+
+                    if (main)
+                    {
+                        std::ostringstream text;
+                        Bytecode::Disassemble(*main, text);
+                        outcome.disassembly = text.str();
+
+                        if (_verbose)
+                            std::cout << outcome.disassembly;
+                    }
+                }
             }
         }
 
-        Error::ErrorCode code = static_cast<Error::ErrorCode>(ErrorManager::Code());
+        if (ErrorManager::HasErrors())
+            outcome.firstError = ErrorManager::Errors().front().Format();
+
+        outcome.code = static_cast<Error::ErrorCode>(ErrorManager::Code());
         ErrorManager::Clear();
 
-        return code;
+        return outcome;
+    }
+
+    // Test files log their errors on purpose, nothing of it should reach the console
+    class Silencer
+    {
+    public:
+        Silencer()
+            : m_out(std::cout.rdbuf(m_sink.rdbuf()))
+            , m_err(std::cerr.rdbuf(m_sink.rdbuf()))
+        {}
+
+        ~Silencer()
+        {
+            std::cout.rdbuf(m_out);
+            std::cerr.rdbuf(m_err);
+        }
+
+    private:
+        std::ostringstream m_sink;
+        std::streambuf* m_out;
+        std::streambuf* m_err;
+    };
+
+    char const* CodeName(Error::ErrorCode _code)
+    {
+        switch (_code)
+        {
+        case Error::ErrorCode::Ok:         return "ok";
+        case Error::ErrorCode::Lexical:    return "lexical error";
+        case Error::ErrorCode::Syntax:     return "syntax error";
+        case Error::ErrorCode::Semantics:  return "semantics error";
+        case Error::ErrorCode::Execution:  return "execution error";
+        case Error::ErrorCode::Io:         return "io error";
+        }
+        return "unknown";
+    }
+
+    // Line endings and trailing blanks must not make a test fail
+    std::string Normalize(std::string _text)
+    {
+        _text.erase(std::remove(_text.begin(), _text.end(), '\r'), _text.end());
+        while (_text.empty() == false && (_text.back() == '\n' || _text.back() == ' '))
+            _text.pop_back();
+        return _text;
+    }
+
+    struct TestStats
+    {
+        int passed = 0;
+        int failed = 0;
+
+        void Report(std::string const& _name, bool _ok, std::string const& _detail = "")
+        {
+            if (_ok)
+            {
+                passed++;
+                Log::Log(LogType::Info, "  [pass] " + _name + "\n");
+                return;
+            }
+
+            failed++;
+            Log::Log(LogType::Error, "  [FAIL] " + _name + "\n");
+            if (_detail.empty() == false)
+                Log::Log(LogType::Error, _detail + "\n");
+        }
+    };
+
+    std::vector<fs::path> LbnFilesIn(fs::path const& _dir)
+    {
+        std::vector<fs::path> all, files;
+        FileHelper::ListDir(_dir, all);
+
+        for (fs::path const& path : all)
+        {
+            if (path.parent_path() == _dir && FileHelper::ExtLower(path) == ".lbn")
+                files.push_back(path);
+        }
+        return files;
+    }
+
+    // Every file of the folder must stop on the expected kind of error (Ok for the valid ones)
+    void TestFolder(fs::path const& _root, char const* _folder, Error::ErrorCode _expected, TestStats& _stats)
+    {
+        Log::Log(LogType::PromptInfo, std::string("[") + _folder + "] expects " + CodeName(_expected) + "\n");
+
+        std::vector<fs::path> files = LbnFilesIn(_root / _folder);
+        _stats.Report(std::string(_folder) + " folder is not empty", files.empty() == false);
+
+        for (fs::path const& file : files)
+        {
+            Outcome outcome;
+            {
+                Silencer silence;
+                outcome = RunPipeline(file, false);
+            }
+
+            std::string detail;
+            if (outcome.code != _expected)
+                detail = std::string("    expected ") + CodeName(_expected) + ", got " + CodeName(outcome.code) + (outcome.firstError.empty() ? "" : " : " + outcome.firstError);
+
+            _stats.Report(std::string(_folder) + "/" + file.filename().string(), outcome.code == _expected, detail);
+        }
+    }
+
+    // Every file must compile to exactly the listing stored next to it
+    void TestCompiler(fs::path const& _root, TestStats& _stats)
+    {
+        Log::Log(LogType::PromptInfo, "[compiler] bytecode listings\n");
+
+        std::vector<fs::path> files = LbnFilesIn(_root / "compiler");
+        _stats.Report("compiler folder is not empty", files.empty() == false);
+
+        for (fs::path const& file : files)
+        {
+            std::string name = "compiler/" + file.filename().string();
+
+            Outcome outcome;
+            {
+                Silencer silence;
+                outcome = RunPipeline(file, false);
+            }
+
+            if (outcome.code != Error::ErrorCode::Ok)
+            {
+                _stats.Report(name, false, std::string("    ") + CodeName(outcome.code) + " : " + outcome.firstError);
+                continue;
+            }
+
+            fs::path listing = file;
+            listing.replace_extension(".asm");
+
+            std::string expected;
+            if (Error e = FileHelper::ReadFile(listing, expected))
+            {
+                _stats.Report(name, false, "    " + e.Format());
+                continue;
+            }
+
+            bool same = Normalize(expected) == Normalize(outcome.disassembly);
+            _stats.Report(name, same, same ? "" : "    got:\n" + outcome.disassembly + "    expected:\n" + expected);
+        }
+    }
+
+    // Returns the number of failed tests
+    int RunAllTests()
+    {
+        TestStats stats;
+
+        Log::Log(LogType::PromptInfo, "[bytecode] self tests\n");
+        stats.Report("bytecode self tests", Bytecode::RunSelfTests());
+
+        fs::path root;
+        if (Error e = FileHelper::FindUpwards(fs::current_path(), "res/Lebon/tests", root))
+        {
+            stats.Report("tests folder found", false, "    " + e.Format());
+        }
+        else
+        {
+            fs::path tests = root / "res" / "Lebon" / "tests";
+
+            TestFolder(tests, "valid",     Error::ErrorCode::Ok,        stats);
+            TestFolder(tests, "lexing",    Error::ErrorCode::Lexical,   stats);
+            TestFolder(tests, "parsing",   Error::ErrorCode::Syntax,    stats);
+            TestFolder(tests, "semantics", Error::ErrorCode::Semantics, stats);
+            TestCompiler(tests, stats);
+        }
+
+        std::string summary = std::to_string(stats.passed) + " passed, " + std::to_string(stats.failed) + " failed\n";
+        Log::Log(stats.failed == 0 ? LogType::Info : LogType::Error, summary);
+
+        return stats.failed;
     }
 }
 
-int main()
+// No argument     : the tests, then the demo program with the tokens, the AST and the bytecode
+// --tests         : the tests only
+// <file>          : that file with the tokens, the AST and the bytecode
+int main(int argc, char** argv)
 {
     SetConsoleOutputCP(CP_UTF8);
 
-    // Second argument set to true also prints the tokens and the AST
-    Error::ErrorCode code = RunFile("../../res/Lebon/tests/valid/program.lbn", true);
+    std::string arg = argc > 1 ? argv[1] : "";
 
-    return code == Error::ErrorCode::Ok ? 0 : 1;
+    if (arg.empty() == false && arg != "--tests")
+        return RunPipeline(fs::path(arg), true).code == Error::ErrorCode::Ok ? 0 : 1;
+
+    int failures = RunAllTests();
+    if (arg == "--tests")
+        return failures == 0 ? 0 : 1;
+
+    // Second argument set to true also prints the tokens, the AST and the bytecode
+    Log::Log(LogType::PromptInfo, "\n[demo] valid/program.lbn\n");
+    Error::ErrorCode code = RunPipeline("../../res/Lebon/tests/valid/program.lbn", true).code;
+
+    return failures == 0 && code == Error::ErrorCode::Ok ? 0 : 1;
 }

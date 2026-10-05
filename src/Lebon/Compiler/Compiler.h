@@ -1,8 +1,10 @@
 #ifndef COMPILER_COMPILER_H_DEFINED
 #define COMPILER_COMPILER_H_DEFINED
 
+#include <deque>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "../Bytecode/Heap.hpp"
 #include "../Bytecode/Prototype.hpp"
@@ -18,8 +20,22 @@ namespace Bytecode
 
     struct Scope
     {
-        size_t localCount; 
+        size_t localCount;
         size_t firstTemp;
+    };
+
+    // Tout ce qu'il faut pour compiler une fonction. Le compilateur en empile un par fonction ouverte,
+    // le premier est toujours le main
+    struct FuncState
+    {
+        Prototype* proto = nullptr;
+
+        size_t freeReg = 0;
+        size_t firstTemp = 0;
+
+        std::vector<LocalVar> locals;           // variables visibles, la plus recente a la fin
+        std::vector<Scope> scopes;              // un element par bloc ouvert dans la fonction
+        std::vector<std::string> upvalueNames;  // meme taille que proto->upvalues
     };
 
     class Compiler : public Visitor
@@ -27,7 +43,7 @@ namespace Bytecode
     public:
         explicit Compiler(Heap& _heap) : m_heap(_heap) {}
 
-        // Renvoie la fonction main ou nullptr si erreur 
+        // Renvoie la fonction main ou nullptr si erreur
         std::unique_ptr<Prototype> Compile(Program& _program);
 
         void Visit(NumberLiteral& _node) override;
@@ -47,19 +63,26 @@ namespace Bytecode
 
     private:
         Heap& m_heap;
-        Prototype* m_proto = nullptr;
 
-        uint8_t m_target = 0;      
-        size_t m_freeReg = 0;
-        size_t m_firstTemp = 0; 
+        std::deque<FuncState> m_funcs;     // deque : les references restent valides quand on empile
+        uint8_t m_target = 0;
         uint32_t m_errorCount = 0;
-        bool m_registersReported = false;  
+        bool m_registersReported = false;
 
-        std::vector<LocalVar> m_locals;    // variables visibles, la plus récente à la fin
-        std::vector<Scope> m_scopes;    // un élément par bloc ouvert, vide = niveau global
+        FuncState& Fn() { return m_funcs.back(); }
+        FuncState const& Fn() const { return m_funcs.back(); }
+        Prototype& Proto() { return *m_funcs.back().proto; }
+
+        // Vrai si une variable declaree ici est une globale (main, hors de tout bloc)
+        bool IsGlobalScope() const;
 
         void CompileTo(Node& _node, uint8_t _dst);
-        LocalVar* FindLocal(std::string const& _name);
+        std::unique_ptr<Prototype> CompileFunction(FuncDecl& _node);
+        void CompileAssign(AssignExpr& _node, bool _wantValue);
+
+        LocalVar* FindLocal(FuncState& _fn, std::string const& _name);
+        // Index de l'upvalue de la fonction _level, -1 si le nom n'est pas une variable d'une fonction parente
+        int ResolveUpvalue(size_t _level, std::string const& _name, Node const& _at);
 
         uint8_t AllocReg(Node const& _at);
         bool IsTopTemp(uint8_t _reg) const;
