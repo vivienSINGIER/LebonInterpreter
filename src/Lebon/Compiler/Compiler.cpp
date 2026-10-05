@@ -6,6 +6,7 @@
 
 namespace Bytecode
 {
+    // Point d'entrée : repart d'un main vide et y compile tout le programme
     std::unique_ptr<Prototype> Compiler::Compile(Program& _program)
     {
         auto main = std::make_unique<Prototype>();
@@ -27,17 +28,20 @@ namespace Bytecode
         return main;
     }
 
+    // Vrai dans main hors de tout bloc : une variable déclarée ici est une globale
     bool Compiler::IsGlobalScope() const
     {
         return m_funcs.size() == 1 && Fn().scopes.empty();
     }
 
+    // Compile une expression pour que sa valeur finisse dans le registre _dst
     void Compiler::CompileTo(Node& _node, uint8_t _dst)
     {
         m_target = _dst;
         _node.Accept(*this);
     }
 
+    // Cherche une variable locale de la fonction, de la plus récente à la plus ancienne (le shadowing marche)
     LocalVar* Compiler::FindLocal(FuncState& _fn, std::string const& _name)
     {
         for (size_t i = _fn.locals.size(); i > 0; --i)
@@ -48,6 +52,8 @@ namespace Bytecode
         return nullptr;
     }
 
+    // Cherche le nom dans les fonctions parentes. Local du parent : capturé depuis son registre.
+    // Plus haut : capturé via l'upvalue du parent. Un nom n'est capturé qu'une fois par fonction.
     int Compiler::ResolveUpvalue(size_t _level, std::string const& _name, Node const& _at)
     {
         if (_level == 0)
@@ -87,6 +93,7 @@ namespace Bytecode
         return static_cast<int>(fn.upvalueNames.size() - 1);
     }
 
+    // Réserve le prochain registre libre et agrandit la taille de frame de la fonction si besoin
     uint8_t Compiler::AllocReg(Node const& _at)
     {
         FuncState& fn = Fn();
@@ -105,17 +112,20 @@ namespace Bytecode
         return reg;
     }
 
+    // Vrai si c'est le dernier temporaire alloué : on peut le réutiliser tel quel
     bool Compiler::IsTopTemp(uint8_t _register) const
     {
         FuncState const& fn = Fn();
         return _register >= fn.firstTemp && static_cast<size_t>(_register) + 1 == fn.freeReg;
     }
 
+    // Ajoute une instruction à la fonction courante avec la ligne source du noeud
     size_t Compiler::Emit(Instruction _i, Node const& _at)
     {
         return Proto().Emit(_i, _at.row);
     }
 
+    // Index de la constante dans le pool de la fonction (ajoutée si nouvelle), erreur si le pool est plein
     uint16_t Compiler::ConstantIndex(Value const& _value, Node const& _at)
     {
         int32_t index = Proto().AddConstant(_value);
@@ -127,6 +137,7 @@ namespace Bytecode
         return static_cast<uint16_t>(index);
     }
 
+    // Journalise une erreur à la position du noeud, Compile renverra alors nullptr
     void Compiler::Report(Node const& _at, std::string const& _message)
     {
         ErrorManager::LogError(Error::Execution(_message, _at.row, _at.column));
@@ -134,6 +145,7 @@ namespace Bytecode
     }
 
     // Expressions
+    // Relit le texte du nombre en double puis le charge depuis le pool de constantes
     void Compiler::Visit(NumberLiteral& _node)
     {
         double number = 0.0;
@@ -153,17 +165,20 @@ namespace Bytecode
         Emit(EncodeABx(OpCode::LoadK, m_target, k), _node);
     }
 
+    // La chaîne est internée dans le heap puis chargée comme constante
     void Compiler::Visit(StringLiteral& _node)
     {
         uint16_t k = ConstantIndex(Value::MakeString(m_heap.Intern(_node.value)), _node);
         Emit(EncodeABx(OpCode::LoadK, m_target, k), _node);
     }
 
+    // Un booléen tient dans l'instruction, pas besoin de constante
     void Compiler::Visit(BooleanLiteral& _node)
     {
         Emit(EncodeABC(OpCode::LoadBool, m_target, _node.value ? 1 : 0), _node);
     }
 
+    // Lecture d'une variable : locale (MOVE), sinon upvalue (GETUPVAL), sinon globale (GETGLOBAL)
     void Compiler::Visit(Identifier& _node)
     {
         if (LocalVar* local = FindLocal(Fn(), _node.name))
@@ -184,6 +199,7 @@ namespace Bytecode
         Emit(EncodeABx(OpCode::GetGlobal, m_target, k), _node);
     }
 
+    // Moins unaire : compile l'opérande (dans _dst si c'est un temporaire libre) puis NEG
     void Compiler::Visit(UnaryExpr& _node)
     {
         if (_node.op != TokenType::SUB)
@@ -205,6 +221,7 @@ namespace Bytecode
         Fn().freeReg = saved;
     }
 
+    // Opération binaire : choisit l'opcode, compile le côté gauche puis le droit dans deux registres, puis émet l'opération
     void Compiler::Visit(BinaryExpr& _node)
     {
         OpCode op = OpCode::Add;
@@ -239,6 +256,8 @@ namespace Bytecode
         Fn().freeReg = saved;
     }
 
+    // Appel : la fonction dans un registre "base", les arguments dans les registres qui suivent, puis CALL.
+    // Le résultat remplace la fonction en base, il est recopié dans _dst si besoin
     void Compiler::Visit(CallExpr& _node)
     {
         if (_node.args.size() >= MaxRegisters)
@@ -268,12 +287,14 @@ namespace Bytecode
         Fn().freeReg = saved;
     }
 
+    // Affectation utilisée comme expression : sa valeur est aussi laissée dans _dst
     void Compiler::Visit(AssignExpr& _node)
     {
         CompileAssign(_node, true);
     }
 
-    // Stores the value in the variable. _wantValue : the result of the expression must also end up in m_target
+    // Range la valeur dans la variable. _wantValue : le résultat doit aussi finir dans m_target.
+    // Local : valeur construite directement dans son registre. Sinon : valeur dans un registre puis SETUPVAL ou SETGLOBAL
     void Compiler::CompileAssign(AssignExpr& _node, bool _wantValue)
     {
         uint8_t dst = m_target;
@@ -309,6 +330,7 @@ namespace Bytecode
     }
 
     // Statements
+    // Expression utilisée comme instruction : sa valeur est jetée, les registres sont libérés ensuite
     void Compiler::Visit(ExprStmt& _node)
     {
         size_t saved = Fn().freeReg;
@@ -327,6 +349,7 @@ namespace Bytecode
         Fn().freeReg = saved;
     }
 
+    // Compile chaque instruction du programme puis termine main par un RETURN
     void Compiler::Visit(Program& _node)
     {
         for (NodePtr& statement : _node.statements)
@@ -337,6 +360,8 @@ namespace Bytecode
     }
 
     // Variables
+    // Déclaration : la valeur initiale (ou nil) est calculée dans un registre.
+    // Global : SETGLOBAL puis le registre est libéré. Local : le registre devient la variable
     void Compiler::Visit(VarDecl& _node)
     {
         FuncState& fn = Fn();
@@ -362,6 +387,7 @@ namespace Bytecode
         }
     }
 
+    // Sans valeur : RETURN vide. Avec valeur : calculée dans un temporaire puis renvoyée
     void Compiler::Visit(ReturnStmt& _node)
     {
         if (_node.value == nullptr)
@@ -379,6 +405,7 @@ namespace Bytecode
         Fn().freeReg = saved;
     }
 
+    // Ouvre une portée, compile les instructions, puis oublie les locales du bloc et libère leurs registres
     void Compiler::Visit(Block& _node)
     {
         FuncState& fn = Fn();
@@ -395,7 +422,8 @@ namespace Bytecode
         fn.firstTemp = scope.firstTemp;
     }
 
-    // Compiles the function into its own prototype. The enclosing function stays the current one once it returns
+    // Compile la fonction dans son propre prototype : paramètres en premiers registres, corps, RETURN final.
+    // La fonction englobante redevient la fonction courante au retour
     std::unique_ptr<Prototype> Compiler::CompileFunction(FuncDecl& _node)
     {
         auto proto = std::make_unique<Prototype>();
@@ -429,6 +457,8 @@ namespace Bytecode
         return proto;
     }
 
+    // Déclaration de fonction : compile le corps dans un prototype, CLOSURE crée la fonction dans un registre,
+    // puis SETGLOBAL si on est au niveau global (sinon le registre est la variable locale)
     void Compiler::Visit(FuncDecl& _node)
     {
         bool global = IsGlobalScope();

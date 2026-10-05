@@ -26,9 +26,9 @@ namespace
         std::string disassembly;     // only filled when the file was compiled
     };
 
-    // Runs the lexer, the parser, the analyser and the compiler on one file.
-    // A stage only runs if the previous ones logged no error.
-    // Returns the code of the first error, Ok if the file went through.
+    // Lance le lexer, le parser, l'analyseur et le compilateur sur un fichier.
+    // Une étape ne tourne que si les précédentes n'ont loggé aucune erreur.
+    // Renvoie le code de la première erreur, Ok si le fichier est passé partout.
     Outcome RunPipeline(fs::path const& _path, bool _verbose)
     {
         Outcome outcome;
@@ -83,7 +83,7 @@ namespace
         return outcome;
     }
 
-    // Test files log their errors on purpose, nothing of it should reach the console
+    // Les fichiers de test loggent des erreurs exprès : tant que l'objet vit, cout et cerr sont redirigés vers un tampon
     class Silencer
     {
     public:
@@ -104,6 +104,7 @@ namespace
         std::streambuf* m_err;
     };
 
+    // Nom lisible d'un code d'erreur, pour les messages de test
     char const* CodeName(Error::ErrorCode _code)
     {
         switch (_code)
@@ -118,7 +119,7 @@ namespace
         return "unknown";
     }
 
-    // Line endings and trailing blanks must not make a test fail
+    // Retire les \r et les blancs de fin pour qu'ils ne fassent pas échouer la comparaison d'un listing
     std::string Normalize(std::string _text)
     {
         _text.erase(std::remove(_text.begin(), _text.end(), '\r'), _text.end());
@@ -132,6 +133,7 @@ namespace
         int passed = 0;
         int failed = 0;
 
+        // Compte et affiche un test (vert si réussi, rouge avec le détail sinon)
         void Report(std::string const& _name, bool _ok, std::string const& _detail = "")
         {
             if (_ok)
@@ -148,6 +150,7 @@ namespace
         }
     };
 
+    // Les fichiers .lbn directement dans le dossier (sans les sous-dossiers), triés par nom
     std::vector<fs::path> LbnFilesIn(fs::path const& _dir)
     {
         std::vector<fs::path> all, files;
@@ -161,7 +164,7 @@ namespace
         return files;
     }
 
-    // Every file of the folder must stop on the expected kind of error (Ok for the valid ones)
+    // Chaque fichier du dossier doit s'arrêter sur le type d'erreur attendu (Ok pour les fichiers valides)
     void TestFolder(fs::path const& _root, char const* _folder, Error::ErrorCode _expected, TestStats& _stats)
     {
         Log::Log(LogType::PromptInfo, std::string("[") + _folder + "] expects " + CodeName(_expected) + "\n");
@@ -185,7 +188,7 @@ namespace
         }
     }
 
-    // Every file must compile to exactly the listing stored next to it
+    // Chaque fichier doit se compiler sans erreur en exactement le listing .asm placé à côté
     void TestCompiler(fs::path const& _root, TestStats& _stats)
     {
         Log::Log(LogType::PromptInfo, "[compiler] bytecode listings\n");
@@ -224,7 +227,7 @@ namespace
         }
     }
 
-    // Returns the number of failed tests
+    // Auto-tests du bytecode, puis tous les dossiers de res/Lebon/tests. Renvoie le nombre de tests en échec
     int RunAllTests()
     {
         TestStats stats;
@@ -255,9 +258,9 @@ namespace
     }
 }
 
-// No argument     : the tests, then the demo program with the tokens, the AST and the bytecode
-// --tests         : the tests only
-// <file>          : that file with the tokens, the AST and the bytecode
+// Sans argument   : les tests, puis le programme de démo avec les tokens, l'AST et le bytecode
+// --tests         : les tests seulement
+// <fichier>       : ce fichier avec les tokens, l'AST et le bytecode
 int main(int argc, char** argv)
 {
     SetConsoleOutputCP(CP_UTF8);
@@ -271,7 +274,7 @@ int main(int argc, char** argv)
     if (arg == "--tests")
         return failures == 0 ? 0 : 1;
 
-    // Second argument set to true also prints the tokens, the AST and the bytecode
+    // Le second argument à true affiche aussi les tokens, l'AST et le bytecode
     Log::Log(LogType::PromptInfo, "\n[demo] valid/program.lbn\n");
     Error::ErrorCode code = RunPipeline("../../res/Lebon/tests/valid/program.lbn", true).code;
 
