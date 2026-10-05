@@ -11,6 +11,7 @@
 #include "Parser/AST.h"
 #include "Parser/ASTPrinter.h"
 #include "Semantics/Analyser.h"
+#include "Bytecode/BytecodeTests.h"
 
 #include <windows.h>
 
@@ -79,6 +80,9 @@ namespace
 int main()
 {
     SetConsoleOutputCP(CP_UTF8);
+
+    if (Bytecode::RunSelfTests() == false)
+        return 1;
 
     // Set to true to also print the tokens and the AST of every file
     bool const verbose = false;
