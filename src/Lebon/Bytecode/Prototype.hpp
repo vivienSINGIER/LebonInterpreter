@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "Opcode.hpp"
+#include "OpCode.hpp"
 #include "Value.h"
 
 namespace Bytecode

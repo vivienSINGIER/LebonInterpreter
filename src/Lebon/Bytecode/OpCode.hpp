@@ -46,7 +46,7 @@ namespace Bytecode
     constexpr uint32_t MaxBx = 0xFFFF;
     constexpr int32_t MaxSBx = 0x7FFF;
 
-    // What an operand means, used by the disassembler and later by a verifier
+    // Singification de l'operand, utilisé par le désassembleur
     enum class Operand : uint8_t { None, Reg, Const, Imm, Upval, Proto, Jump };
     enum class OpFormat : uint8_t { ABC, ABx, AsBx };
 
