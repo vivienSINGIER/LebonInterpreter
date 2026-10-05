@@ -63,7 +63,8 @@ using ExprPtr = std::unique_ptr<Expr>;
 // Expressions 
 struct NumberLiteral : Expr 
 { 
-	std::string value;
+	float value;
+	std::string litteral;
 	void Accept(Visitor& _visitor) override;
 };
 

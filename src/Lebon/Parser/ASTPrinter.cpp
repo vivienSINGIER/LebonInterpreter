@@ -58,7 +58,7 @@ void AstPrinter::Child(Node* _node)
 	depth--;
 }
 
-void AstPrinter::Visit(NumberLiteral& _node) { Line() << "Number " << _node.value << TypeTag(_node) << "\n"; }
+void AstPrinter::Visit(NumberLiteral& _node) { Line() << "Number " << _node.litteral << TypeTag(_node) << "\n"; }
 void AstPrinter::Visit(StringLiteral& _node) { Line() << "String \"" << _node.value << "\"" << TypeTag(_node) << "\n"; }
 void AstPrinter::Visit(BooleanLiteral& _node) { Line() << "Boolean " << (_node.value ? "true" : "false") << TypeTag(_node) << "\n"; }
 void AstPrinter::Visit(Identifier& _node) { Line() << "Identifier " << _node.name << SymbolTag(_node.symbol) << TypeTag(_node) << "\n"; }

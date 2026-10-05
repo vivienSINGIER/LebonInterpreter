@@ -61,6 +61,8 @@ private:
 	bool EndOfStatement();
 	void SkipNewLines();
 
+	float StrToFloat(std::string const& _str, uint32_t _line, uint32_t _column);
+	
 	// Statements
 	NodePtr Statement();
 	NodePtr VarDeclaration();

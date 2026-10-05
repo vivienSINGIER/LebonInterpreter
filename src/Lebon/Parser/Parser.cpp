@@ -131,6 +131,21 @@ void Parser::SkipNewLines()
 	while (Match({ TokenType::NEWLINE }));
 }
 
+float Parser::StrToFloat(std::string const& _str, uint32_t _line, uint32_t _column)
+{
+	std::size_t pos = 0;
+	float value = std::stof(_str, &pos);
+
+	// Reject trailing characters, e.g. "1.5abc"
+	if (pos != _str.size())
+	{
+		Error e = Error::Syntax("StrToFloat: invalid float string '" + _str + "'", _line, _column);
+		ErrorManager::LogError(e);
+	}
+
+	return value;
+}
+
 NodePtr Parser::Statement()
 {
 	if (Match({ TokenType::VAR_DECLARATION })) return VarDeclaration();
@@ -389,7 +404,8 @@ ExprPtr Parser::Primary()
 	if (Match({ TokenType::NUMBER }))
 	{
 		auto num = MakeNode<NumberLiteral>(Previous());
-		num->value = Previous().literal;
+		num->value = StrToFloat(Previous().literal, Previous().row, Previous().column);
+		num->litteral = Previous().literal;
 		return num;
 	}
 	if (Match({ TokenType::STRING }))
