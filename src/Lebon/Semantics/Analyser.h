@@ -35,6 +35,8 @@ namespace Semantics
         
     private:
         ScopeStack* m_stack = nullptr;
+        TypeTable m_types;
+        std::vector<Expr*> m_exprs;
         uint32_t m_errorCount = 0;
         
         void DefineBuiltIns();
@@ -44,6 +46,9 @@ namespace Semantics
         void Report(uint32_t _row, uint32_t _column, std::string const& _message);
         
         InferredType ValueType(Expr const& _expr);
+        TypeVar ValueVar(Expr const& _expr);
+        
+        void SetVar(Expr& _expr, Semantics::TypeVar _var);
     };
     
 }

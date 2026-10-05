@@ -39,6 +39,11 @@ namespace Semantics
         m_stack = &_program.stack;
         _program.Accept(*this);
         
+        for (Expr* e : m_exprs) e->type = m_types.Get(e->typeVar);
+        for (SymbolInfo& s : m_stack->table.symbols)
+            if (s.typeVar != InvalidTypeVar) 
+                s.infType = m_types.Get(s.typeVar);
+        
         return m_errorCount == 0;
     }
 
@@ -47,7 +52,7 @@ namespace Semantics
         SymbolInfo affiseP;
         affiseP.name = "_out";
         affiseP.type = SymbolType::Param;
-        affiseP.infType = InferredType::Any;
+        affiseP.typeVar = m_types.New(InferredType::Any);
         affiseP.isBuiltIn = true;
         affiseP.isInitialized = false;
         SymbolId id = m_stack->table.Create(affiseP);
@@ -55,7 +60,7 @@ namespace Semantics
         SymbolInfo affise;
         affise.name = "afise";
         affise.type = SymbolType::Function;
-        affise.infType = InferredType::Void;
+        affise.typeVar = m_types.New(InferredType::Void);
         affise.isBuiltIn = true;
         affise.isInitialized = true;
         affise.params = { id };
@@ -75,11 +80,27 @@ namespace Semantics
 
     InferredType Analyser::ValueType(Expr const& _expr)
     {
-        if (_expr.type != InferredType::Void)
-            return _expr.type;
+        InferredType type = m_types.Get(_expr.typeVar);
+        if (type != InferredType::Void)
+            return type;
         
         Report(_expr, "expression has no value");
         return InferredType::Error;
+    }
+
+    TypeVar Analyser::ValueVar(Expr const& _expr)
+    {
+        if (m_types.Get(_expr.typeVar) != InferredType::Void)
+            return _expr.typeVar;
+
+        Report(_expr, "expression has no value");
+        return m_types.New(InferredType::Error);
+    }
+
+    void Analyser::SetVar(Expr& _expr, Semantics::TypeVar _var)
+    {
+        _expr.typeVar = _var;
+        m_exprs.push_back(&_expr);
     }
 
     void Analyser::Visit(Program& _p)
@@ -89,17 +110,19 @@ namespace Semantics
         
         for (auto& s : _p.statements)
             s->Accept(*this);
+        
+        m_stack->Pop();
     }
 
     void Analyser::Visit(VarDecl& _varDecl)
     {
         bool isInitialized = false;
-        InferredType type = InferredType::Unknown;
+        TypeVar typeVar = m_types.New();
         if (_varDecl.init != nullptr)
         {
             _varDecl.init->Accept(*this);
             isInitialized = true;
-            type = ValueType(*_varDecl.init);
+            typeVar = ValueVar(*_varDecl.init);
         }
         
         bool isDefined = m_stack->Lookup(_varDecl.name) != InvalidSymbolId;
@@ -109,7 +132,7 @@ namespace Semantics
         
         SymbolInfo s;
         s.name = _varDecl.name;
-        s.infType = type;
+        s.typeVar = typeVar;
         s.isBuiltIn = false;
         s.isInitialized = isInitialized;
         s.line = _varDecl.row;
@@ -144,7 +167,7 @@ namespace Semantics
             return;
         }
 
-        _identifier.type = s.infType;
+        SetVar(_identifier, s.typeVar);
     }
 
     void Analyser::Visit(AssignExpr& _expr)
@@ -174,16 +197,14 @@ namespace Semantics
             _expr.type = InferredType::Error;
             return;
         }
-        if (IsKnown(s.infType) && IsKnown(t) && t != s.infType)
+        if (m_types.Unify(s.typeVar, _expr.value->typeVar) == false)
         {
             Report(_expr.row, _expr.column, "variable types don't match"); // TODO clean error
             _expr.type = InferredType::Error;
             return;
         }
 
-        if (s.infType == InferredType::Unknown)
-            s.infType = t;
-        _expr.type = t;
+        _expr.typeVar = s.typeVar;
         s.isInitialized = true;
     }
 
@@ -197,17 +218,17 @@ namespace Semantics
 
     void Analyser::Visit(NumberLiteral& _l)
     {
-        _l.type = InferredType::Number;
+        SetVar(_l, m_types.New(InferredType::Number));
     }
 
     void Analyser::Visit(StringLiteral& _l)
     {
-         _l.type = InferredType::String;
+        SetVar(_l, m_types.New(InferredType::String));
     }
 
     void Analyser::Visit(BooleanLiteral& _l)
     {
-         _l.type = InferredType::Bool;
+         SetVar(_l, m_types.New(InferredType::Bool));
     }
 
     void Analyser::Visit(ExprStmt& _expr)
@@ -222,7 +243,7 @@ namespace Semantics
         
         SymbolInfo sym;
         sym.name = _func.name;
-        sym.infType = InferredType::Unknown;
+        sym.typeVar = m_types.New();
         sym.isInitialized = true;
         sym.isBuiltIn = false;
         sym.line = _func.row;
@@ -239,7 +260,7 @@ namespace Semantics
             pS.name = p.name;
             pS.line = p.row;
             pS.column = p.column;
-            pS.infType = InferredType::Unknown;
+            pS.typeVar = m_types.New();
             pS.type = SymbolType::Param;
             pS.isInitialized = true;
             pS.isBuiltIn = false;
@@ -259,7 +280,7 @@ namespace Semantics
         m_stack->Pop();
         
         if (hasReturn == false)
-            m_stack->table.Get(funcId).infType = InferredType::Void;
+            m_types.Bind(m_stack->table.Get(funcId).typeVar, InferredType::Void);
     }
 
     void Analyser::Visit(CallExpr& _call)
@@ -299,6 +320,7 @@ namespace Semantics
         }
         _call.symbol = funcId;
         id->symbol = funcId;
+        id->type = s.infType;
 
         if (s.params.size() != _call.args.size())
         {
@@ -310,20 +332,13 @@ namespace Semantics
         for (size_t i = 0; i < s.params.size(); i++)
         {
             SymbolInfo& sym = m_stack->table.Get(s.params[i]);
-            InferredType aType = argTypes[i];
-
-            if (sym.infType == InferredType::Any)
-                continue;
-            if (IsKnown(aType) == false)
-                continue;
-
-            if (sym.infType == InferredType::Unknown)
-                sym.infType = aType;
-            else if (sym.infType != aType)
+            InferredType aType = m_types.Get(_call.args[i]->typeVar);
+            
+            if (m_types.Unify(sym.typeVar, _call.args[i]->typeVar) == false)
                 Report(*_call.args[i].get(), std::string("argument type doesn't match function signature, expected '") + TypeName(sym.infType) + "', got '" + TypeName(aType) + "'" );
         }
         
-        _call.type = s.infType;
+        SetVar(_call, s.typeVar);
     }
 
     void Analyser::Visit(ReturnStmt& _rtrn)
@@ -349,20 +364,17 @@ namespace Semantics
             Report(_rtrn, "return expression used outside of a function");
             return;
         }
-
-        InferredType type = InferredType::Void;
+        
         if (_rtrn.value != nullptr)
-        {
             _rtrn.value->Accept(*this);
-            type = _rtrn.value->type;
-        }
+        
+        TypeVar var = _rtrn.value != nullptr ? ValueVar(*_rtrn.value) : m_types.New(InferredType::Void);
 
         SymbolInfo& func = m_stack->table.Get(funcId);
-        bool known = IsKnown(type) && IsKnown(func.infType);
-        if (known && type != func.infType)
-            Report(_rtrn, std::string("function returns both ") + TypeName(func.infType) + " and " + TypeName(type));
-        else if (func.infType == InferredType::Unknown)
-            func.infType = type;
+        InferredType funcType = m_types.Get(func.typeVar);
+        InferredType type = m_types.Get(var);
+        if (m_types.Unify(func.typeVar, var) == false)
+            Report(_rtrn, std::string("function returns both ") + TypeName(funcType) + " and " + TypeName(type));
     }
 
     void Analyser::Visit(UnaryExpr& _expr)
@@ -396,7 +408,7 @@ namespace Semantics
             }
 
             bool incorrect = lType == InferredType::Bool || rType == InferredType::Bool;
-            incorrect = incorrect || (lKnown && rKnown && lType != rType);
+            incorrect = incorrect || m_types.Unify(_expr.left->typeVar, _expr.right->typeVar) == false;
 
             if (incorrect)
             {
@@ -405,18 +417,13 @@ namespace Semantics
                 return;
             }
             
-            _expr.type = lKnown && rKnown ? lType : InferredType::Unknown;
-            Infer(_expr.left->type, _expr.type);
-            Infer(_expr.right->type, _expr.type);
+            _expr.typeVar = _expr.left->typeVar;
             return;
         }
 
-        bool incorrect = lKnown && lType != InferredType::Number;
-        incorrect = incorrect || (rKnown && rType != InferredType::Number);
+        bool incorrect = !m_types.Bind(_expr.left->typeVar, InferredType::Number) || !m_types.Bind(_expr.right->typeVar, InferredType::Number);
         if (incorrect && poisoned == false)
             Report(_expr, std::string("operands must be numbers, got ") + TypeName(lType) + " and " + TypeName(rType));
-        _expr.type = InferredType::Number;
-        Infer(_expr.left->type, InferredType::Number);
-        Infer(_expr.right->type, InferredType::Number);
+        _expr.typeVar = m_types.New(InferredType::Number);
     }
 }

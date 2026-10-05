@@ -53,6 +53,7 @@ struct Node
 
 struct Expr : Node
 {
+	Semantics::TypeVar typeVar = Semantics::InvalidTypeVar;
 	Semantics::InferredType type = Semantics::InferredType::Unknown;
 };
 

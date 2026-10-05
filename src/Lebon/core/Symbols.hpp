@@ -24,11 +24,59 @@ namespace Semantics
     
     using SymbolId = uint32_t;
     constexpr SymbolId InvalidSymbolId = UINT32_MAX;
+    using TypeVar = uint32_t;
+    constexpr TypeVar InvalidTypeVar = UINT32_MAX;
+    
+    struct TypeTable
+    {
+        std::vector<TypeVar> parents;
+        std::vector<InferredType> types;
+        
+        
+        TypeVar New(InferredType _type = InferredType::Unknown)
+        {
+            parents.push_back(static_cast<TypeVar>(parents.size()));
+            types.push_back(_type);
+            return static_cast<TypeVar>(parents.size() - 1);
+        }
+
+        TypeVar Find(TypeVar _v)
+        {
+            while (parents[_v] != _v)
+            {
+                parents[_v] = parents[parents[_v]];
+                _v = parents[_v];
+            }
+            return _v;
+        }
+
+        InferredType Get(TypeVar _v) { return types[Find(_v)]; }
+        
+        static bool Absorbs(InferredType _t) { return _t == InferredType::Error || _t == InferredType::Any; }
+
+        bool Bind(TypeVar _v, InferredType _type)
+        {
+            TypeVar root = Find(_v);
+            if (types[root] == InferredType::Unknown) { types[root] = _type; return true; }
+            return types[root] == _type || Absorbs(types[root]) || Absorbs(_type);
+        }
+        
+        bool Unify(TypeVar _a, TypeVar _b)
+        {
+            TypeVar a = Find(_a), b = Find(_b);
+            if (a == b || Absorbs(types[a]) || Absorbs(types[b])) return true;
+            if (types[a] == InferredType::Unknown)      parents[a] = b;
+            else if (types[b] == InferredType::Unknown) parents[b] = a;
+            else return types[a] == types[b];
+            return true;
+        }
+    };
     
     struct SymbolInfo
     {
         SymbolType type;
         InferredType infType;
+        TypeVar typeVar;
         std::string name;
         
         uint32_t line = 0;
