@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "../Lexer/Tokens.hpp"
+#include "../core/Symbols.hpp"
 
 struct NumberLiteral;
 struct StringLiteral;
@@ -50,59 +51,68 @@ struct Node
 	virtual ~Node() = default;
 };
 
+struct Expr : Node
+{
+	Semantics::InferredType type = Semantics::InferredType::Unknown;
+};
+
 using NodePtr = std::unique_ptr<Node>;
+using ExprPtr = std::unique_ptr<Expr>;
 
 // Expressions 
-struct NumberLiteral : Node 
+struct NumberLiteral : Expr 
 { 
 	std::string value;
 	void Accept(Visitor& _visitor) override;
 };
 
-struct StringLiteral : Node 
+struct StringLiteral : Expr 
 { 
 	std::string value;
 	void Accept(Visitor& _visitor) override;
 };
 
-struct BooleanLiteral : Node 
+struct BooleanLiteral : Expr 
 { 
 	bool value = false; 
 	void Accept(Visitor& _visitor) override;
 };
 
-struct Identifier : Node 
+struct Identifier : Expr 
 { 
 	std::string name;
+	Semantics::SymbolId symbol = Semantics::InvalidSymbolId;
 	void Accept(Visitor& _visitor) override;
 };
 
 // END_OF_FILE par defaut (NE DOIT PAS RESTER)
-struct UnaryExpr : Node 
+struct UnaryExpr : Expr 
 {
 	TokenType op = TokenType::END_OF_FILE;
-	NodePtr operand;
+	ExprPtr operand;
 	void Accept(Visitor& _visitor) override;
 };
 
-struct BinaryExpr : Node 
+struct BinaryExpr : Expr 
 { 
 	TokenType op = TokenType::END_OF_FILE; 
-	NodePtr left, right; 
+	ExprPtr left, right; 
 	void Accept(Visitor& _visitor) override;
 };
 
-struct AssignExpr : Node 
+struct AssignExpr : Expr 
 { 
 	std::string name;
-	NodePtr value; 
+	ExprPtr value; 
+	Semantics::SymbolId symbol = Semantics::InvalidSymbolId;
 	void Accept(Visitor& _visitor) override;
 };
 
-struct CallExpr : Node 
+struct CallExpr : Expr 
 { 
-	NodePtr callee; 
-	std::vector<NodePtr> args; 
+	ExprPtr callee; 
+	std::vector<ExprPtr> args; 
+	Semantics::SymbolId symbol = Semantics::InvalidSymbolId;
 	void Accept(Visitor& _visitor) override;
 };
 
@@ -110,19 +120,20 @@ struct CallExpr : Node
 struct VarDecl : Node 
 { 
 	std::string name; 
-	NodePtr init;
+	ExprPtr init;
+	Semantics::SymbolId symbol = Semantics::InvalidSymbolId;
 	void Accept(Visitor& _visitor) override;
 }; 
 
 struct ExprStmt : Node 
 { 
-	NodePtr expr;
+	ExprPtr expr;
 	void Accept(Visitor& _visitor) override;
 };
 
 struct ReturnStmt : Node 
 {
-	NodePtr value;
+	ExprPtr value;
 	void Accept(Visitor& _visitor) override;
 };                  
 
@@ -135,6 +146,7 @@ struct Block : Node
 struct Param
 {
 	std::string name;
+	Semantics::SymbolId symbol = Semantics::InvalidSymbolId;
 	uint32_t row = 0, column = 0;
 };
 
@@ -143,12 +155,14 @@ struct FuncDecl : Node
 	std::string name;
 	std::vector<Param> params;
 	std::unique_ptr<Block> body;
+	Semantics::SymbolId symbol = Semantics::InvalidSymbolId;
 	void Accept(Visitor& _visitor) override;
 };
 
 struct Program : Node 
 { 
 	std::vector<NodePtr> statements; 
+	Semantics::ScopeStack stack;
 	void Accept(Visitor& _visitor) override;
 };
 

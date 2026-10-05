@@ -5,7 +5,7 @@
 
 #include "../core/Error.h"
 #include "../Parser/AST.h"
-#include "Symbols.hpp"
+#include "../core/Symbols.hpp"
 
 namespace Semantics
 {
@@ -34,9 +34,7 @@ namespace Semantics
         void Visit(BinaryExpr& _expr) override;
         
     private:
-        ScopeStack m_stack;
-        
-        InferredType m_lastType = InferredType::Unknown;
+        ScopeStack* m_stack = nullptr;
         uint32_t m_errorCount = 0;
         
         void DefineBuiltIns();
@@ -44,6 +42,8 @@ namespace Semantics
         // Logs a semantics error and keeps going, the walk never stops on an error
         void Report(Node const& _at, std::string const& _message);
         void Report(uint32_t _row, uint32_t _column, std::string const& _message);
+        
+        InferredType ValueType(Expr const& _expr);
     };
     
 }

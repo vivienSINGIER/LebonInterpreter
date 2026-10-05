@@ -70,13 +70,13 @@ private:
 	NodePtr ExpressionStatement();
 
 	// Expressions
-	NodePtr Expression();
-	NodePtr Assignment();
-	NodePtr Additive();
-	NodePtr Multiplicative();
-	NodePtr Unary();
-	NodePtr Call();
-	NodePtr Primary();
+	ExprPtr Expression();
+	ExprPtr Assignment();
+	ExprPtr Additive();
+	ExprPtr Multiplicative();
+	ExprPtr Unary();
+	ExprPtr Call();
+	ExprPtr Primary();
 
 	template <typename T>
 	std::unique_ptr<T> MakeNode(Token const& _at)

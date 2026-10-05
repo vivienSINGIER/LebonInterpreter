@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <cstdint>
 
 namespace Semantics
 {
@@ -13,7 +14,7 @@ namespace Semantics
     
     enum class InferredType
     {
-        Unknown, Bool, String, Number
+        Unknown, Bool, String, Number, Void
     };
     
     enum class ScopeType
@@ -21,13 +22,8 @@ namespace Semantics
         Global, FunctionBody, Block
     };
     
-    struct ParamInfo
-    {
-        std::string name;
-        InferredType type;
-        uint32_t row;
-        uint32_t column;
-    };
+    using SymbolId = uint32_t;
+    constexpr SymbolId InvalidSymbolId = UINT32_MAX;
     
     struct SymbolInfo
     {
@@ -41,23 +37,38 @@ namespace Semantics
         bool isInitialized = false;
         bool isBuiltIn = false;
         
-        std::vector<ParamInfo> paramInfo;
+        std::vector<SymbolId> params;
+    };
+
+    struct SymbolTable
+    {
+        std::vector<SymbolInfo> symbols;
+        
+        SymbolId Create(SymbolInfo _s)
+        {
+            symbols.push_back(std::move(_s));
+            return static_cast<SymbolId>(symbols.size() - 1);
+        }
+        
+        SymbolInfo& Get(SymbolId _id) { return symbols[_id]; }
     };
     
     struct Scope
     {
         ScopeType type;
-        std::unordered_map<std::string, SymbolInfo> symbols;
+        std::unordered_map<std::string, SymbolId> symbols;
         std::string funcName;
+        bool hasReturn = false;
     };
     
     struct ScopeStack
     {
         std::vector<Scope> scopes;
+        SymbolTable table;
         
         void Push(ScopeType _type, std::string const& _funcName = "")
         {
-            scopes.push_back(Scope{_type, {}, _funcName});
+            scopes.push_back(Scope{_type, {}, _funcName, false});
         }
         
         void Pop()
@@ -66,35 +77,37 @@ namespace Semantics
                 scopes.pop_back();
         }
         
-        void Define(std::string const& _name, SymbolInfo _sInfo)
+        SymbolId Define(std::string const& _name, SymbolInfo _sInfo)
         {
-            if (!scopes.empty())
-            {
-                scopes.back().symbols[_name] = _sInfo;
-            }
+            if (scopes.empty())
+                return InvalidSymbolId;
+
+            SymbolId id = table.Create(std::move(_sInfo));
+            scopes.back().symbols[_name] = id;
+            return id;
         }
         
-        SymbolInfo* Lookup(std::string const& _name)
+        SymbolId Lookup(std::string const& _name)
         {
             for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
             {
                 auto symIt = it->symbols.find(_name);
                 if (symIt != it->symbols.end())
-                    return &symIt->second;
+                    return symIt->second;
             }
-            return nullptr;
+            return InvalidSymbolId;
         }
         
-        SymbolInfo* LookupSingle(std::string const& _name)
+        SymbolId LookupSingle(std::string const& _name)
         {
             if (scopes.empty() == false)
             {
                 auto& symbols = scopes.back().symbols;
                 auto symIt = symbols.find(_name);
                 if (symIt != symbols.end())
-                    return &symIt->second;
+                    return symIt->second;
             }
-            return nullptr;
+            return InvalidSymbolId;
         }
     };
 }
