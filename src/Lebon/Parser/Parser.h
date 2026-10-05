@@ -61,6 +61,8 @@ private:
 	bool EndOfStatement();
 	void SkipNewLines();
 
+	float StrToFloat(std::string const& _str, uint32_t _line, uint32_t _column);
+	
 	// Statements
 	NodePtr Statement();
 	NodePtr VarDeclaration();
@@ -70,13 +72,13 @@ private:
 	NodePtr ExpressionStatement();
 
 	// Expressions
-	NodePtr Expression();
-	NodePtr Assignment();
-	NodePtr Additive();
-	NodePtr Multiplicative();
-	NodePtr Unary();
-	NodePtr Call();
-	NodePtr Primary();
+	ExprPtr Expression();
+	ExprPtr Assignment();
+	ExprPtr Additive();
+	ExprPtr Multiplicative();
+	ExprPtr Unary();
+	ExprPtr Call();
+	ExprPtr Primary();
 
 	template <typename T>
 	std::unique_ptr<T> MakeNode(Token const& _at)

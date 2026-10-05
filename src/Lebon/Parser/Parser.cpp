@@ -37,7 +37,7 @@ std::unique_ptr<Program> Parser::Parse()
 			m_panic = false;
 			if (Check(TokenType::SCOPE_END))
 				Advance();
-			continue;           // on passe à l'instruction suivante
+			continue;           // on passe ï¿½ l'instruction suivante
 		}
 
 		program->statements.push_back(std::move(stmt));
@@ -129,6 +129,21 @@ bool Parser::EndOfStatement()
 void Parser::SkipNewLines()
 {
 	while (Match({ TokenType::NEWLINE }));
+}
+
+float Parser::StrToFloat(std::string const& _str, uint32_t _line, uint32_t _column)
+{
+	std::size_t pos = 0;
+	float value = std::stof(_str, &pos);
+
+	// Reject trailing characters, e.g. "1.5abc"
+	if (pos != _str.size())
+	{
+		Error e = Error::Syntax("StrToFloat: invalid float string '" + _str + "'", _line, _column);
+		ErrorManager::LogError(e);
+	}
+
+	return value;
 }
 
 NodePtr Parser::Statement()
@@ -266,12 +281,12 @@ NodePtr Parser::ExpressionStatement()
 	return stmt;
 }
 
-NodePtr Parser::Expression()
+ExprPtr Parser::Expression()
 {
 	return Assignment();
 }
 
-NodePtr Parser::Assignment()
+ExprPtr Parser::Assignment()
 {
 	if (Check(TokenType::IDENTIFIER) && current + 1 < m_tokens.size() 
 		&& m_tokens[current + 1].type == TokenType::ASSIGN)
@@ -292,9 +307,9 @@ NodePtr Parser::Assignment()
 	return Additive();
 }
 
-NodePtr Parser::Additive()
+ExprPtr Parser::Additive()
 {
-	NodePtr left = Multiplicative();
+	ExprPtr left = Multiplicative();
 	while (left && Match({ TokenType::ADD, TokenType::SUB }))
 	{
 		Token const& op = Previous();
@@ -313,9 +328,9 @@ NodePtr Parser::Additive()
 	return left;
 }
 
-NodePtr Parser::Multiplicative()
+ExprPtr Parser::Multiplicative()
 {
-	NodePtr left = Unary();
+	ExprPtr left = Unary();
 	while (left && Match({ TokenType::MUL, TokenType::DIV }))
 	{
 		Token const& op = Previous();
@@ -334,7 +349,7 @@ NodePtr Parser::Multiplicative()
 	return left;
 }
 
-NodePtr Parser::Unary()
+ExprPtr Parser::Unary()
 {
 	if (Match({ TokenType::SUB }))
 	{
@@ -353,9 +368,9 @@ NodePtr Parser::Unary()
 	return Call();
 }
 
-NodePtr Parser::Call()
+ExprPtr Parser::Call()
 {
-	NodePtr expr = Primary();
+	ExprPtr expr = Primary();
 
 	while (expr && Match({ TokenType::L_PARENTHESIS }))
 	{
@@ -366,7 +381,7 @@ NodePtr Parser::Call()
 		{
 			do
 			{
-				NodePtr arg = Expression();
+				ExprPtr arg = Expression();
 
 				if (!arg)
 					return nullptr;
@@ -384,12 +399,13 @@ NodePtr Parser::Call()
 	return expr;
 }
 
-NodePtr Parser::Primary()
+ExprPtr Parser::Primary()
 {
 	if (Match({ TokenType::NUMBER }))
 	{
 		auto num = MakeNode<NumberLiteral>(Previous());
-		num->value = Previous().literal;
+		num->value = StrToFloat(Previous().literal, Previous().row, Previous().column);
+		num->litteral = Previous().literal;
 		return num;
 	}
 	if (Match({ TokenType::STRING }))
@@ -418,7 +434,7 @@ NodePtr Parser::Primary()
 	}
 	if (Match({ TokenType::L_PARENTHESIS }))
 	{
-		NodePtr inner = Expression();
+		ExprPtr inner = Expression();
 
 		if (!inner || Consume(TokenType::R_PARENTHESIS, "expected ')' after expression") == false)
 			return nullptr;
