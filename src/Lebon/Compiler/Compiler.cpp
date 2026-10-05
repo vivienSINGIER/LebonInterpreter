@@ -93,14 +93,14 @@ namespace Bytecode
     {
         double number = 0.0;
 
-        char const* first = _node.value.data();
-        char const* last = first + _node.value.size();
+        char const* first = _node.litteral.data();
+        char const* last = first + _node.litteral.size();
 
         auto result = std::from_chars(first, last, number);
 
         if (result.ec != std::errc() || result.ptr != last)
         {
-            Report(_node, "invalid number '" + _node.value + "'");
+            Report(_node, "invalid number '" + _node.litteral + "'");
             return;
         }
 
@@ -203,7 +203,7 @@ namespace Bytecode
             base = AllocReg(_node);
 
         CompileTo(*_node.callee, base);
-        for (NodePtr& arg : _node.args)
+        for (ExprPtr& arg : _node.args)
         {
             uint8_t reg = AllocReg(*arg);
             CompileTo(*arg, reg);
