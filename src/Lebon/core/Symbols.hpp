@@ -75,8 +75,8 @@ namespace Semantics
     struct SymbolInfo
     {
         SymbolType type;
-        InferredType infType;
-        TypeVar typeVar;
+        InferredType infType = InferredType::Unknown;
+        TypeVar typeVar = InvalidTypeVar;
         std::string name;
         
         uint32_t line = 0;

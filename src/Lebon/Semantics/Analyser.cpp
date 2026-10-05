@@ -41,8 +41,14 @@ namespace Semantics
         
         for (Expr* e : m_exprs) e->type = m_types.Get(e->typeVar);
         for (SymbolInfo& s : m_stack->table.symbols)
+        {
             if (s.typeVar != InvalidTypeVar) 
                 s.infType = m_types.Get(s.typeVar);
+            if (s.isBuiltIn || s.type == SymbolType::Function)
+                continue;
+            if (s.infType == InferredType::Unknown)
+                Report(s.line, s.column, "can't infer type of '" + s.name + "'");
+        }
         
         return m_errorCount == 0;
     }
@@ -147,7 +153,7 @@ namespace Semantics
         if (id == InvalidSymbolId)
         {
             Report(_identifier.row, _identifier.column, "unknown identifier '" + _identifier.name + "' used");
-            _identifier.type = InferredType::Error;
+            SetVar(_identifier, m_types.New(InferredType::Error));
             return;
         }
         _identifier.symbol = id;
@@ -156,14 +162,14 @@ namespace Semantics
         if (s.type == SymbolType::Function)
         {
             Report(_identifier.row, _identifier.column, "function '" + s.name + "' used as a value");
-            _identifier.type = InferredType::Error;
+            SetVar(_identifier, m_types.New(InferredType::Error));
             return;
         }
 
         if (s.isInitialized == false)
         {
             Report(_identifier.row, _identifier.column, "uninitialized identifier '" + _identifier.name + "' used");
-            _identifier.type = InferredType::Error;
+            SetVar(_identifier, m_types.New(InferredType::Error));
             return;
         }
 
@@ -179,7 +185,7 @@ namespace Semantics
         if (id == InvalidSymbolId)
         {
             Report(_expr.row, _expr.column, "unknown identifier '" + _expr.name + "' used");
-            _expr.type = InferredType::Error;
+            SetVar(_expr, m_types.New(InferredType::Error));
             return;
         }
         _expr.symbol = id;
@@ -188,23 +194,23 @@ namespace Semantics
         if (s.isBuiltIn)
         {
             Report(_expr.row, _expr.column, "can't assign '" + _expr.name + "' to built-in '" + s.name + "'");
-            _expr.type = InferredType::Error;
+            SetVar(_expr, m_types.New(InferredType::Error));
             return;
         }
         if (s.type == SymbolType::Function)
         {
             Report(_expr.row, _expr.column, "can't assign var '" + _expr.name + "' to function '" + s.name + "'");
-            _expr.type = InferredType::Error;
+            SetVar(_expr, m_types.New(InferredType::Error));
             return;
         }
         if (m_types.Unify(s.typeVar, _expr.value->typeVar) == false)
         {
             Report(_expr.row, _expr.column, "variable types don't match"); // TODO clean error
-            _expr.type = InferredType::Error;
+            SetVar(_expr, m_types.New(InferredType::Error));
             return;
         }
 
-        _expr.typeVar = s.typeVar;
+        SetVar(_expr, s.typeVar);
         s.isInitialized = true;
     }
 
@@ -297,7 +303,7 @@ namespace Semantics
         if (id == nullptr)
         {
             Report(_call.row, _call.column, "expression isn't callable");
-            _call.type = InferredType::Error;
+            SetVar(_call, m_types.New(InferredType::Error));
             return;
         }
         
@@ -305,8 +311,8 @@ namespace Semantics
         if (funcId == InvalidSymbolId)
         {
             Report(_call.row, _call.column, "function '" + id->name + "' doesn't exists" );
-            _call.type = InferredType::Error;
-            id->type = InferredType::Error;
+            SetVar(_call, m_types.New(InferredType::Error));
+            SetVar(*id, m_types.New(InferredType::Error));
             return;
         }
 
@@ -314,18 +320,17 @@ namespace Semantics
         if (s.type != SymbolType::Function)
         {
             Report(_call.row, _call.column, "expression isn't callable");
-            _call.type = InferredType::Error;
-            id->type = InferredType::Error;
+            SetVar(_call, m_types.New(InferredType::Error));
+            SetVar(*id, m_types.New(InferredType::Error));
             return;
         }
         _call.symbol = funcId;
         id->symbol = funcId;
-        id->type = s.infType;
 
         if (s.params.size() != _call.args.size())
         {
             Report(_call.row, _call.column, "incorrect argument count for function '" + id->name + "' : expecter (" + std::to_string(s.params.size()) + "), got (" + std::to_string(_call.args.size()) + ")" );
-            _call.type = InferredType::Error;
+            SetVar(_call, m_types.New(InferredType::Error));
             return;
         }
 
@@ -335,10 +340,11 @@ namespace Semantics
             InferredType aType = m_types.Get(_call.args[i]->typeVar);
             
             if (m_types.Unify(sym.typeVar, _call.args[i]->typeVar) == false)
-                Report(*_call.args[i].get(), std::string("argument type doesn't match function signature, expected '") + TypeName(sym.infType) + "', got '" + TypeName(aType) + "'" );
+                Report(*_call.args[i].get(), std::string("argument type doesn't match function signature, expected '") + TypeName(m_types.Get(sym.typeVar)) + "', got '" + TypeName(aType) + "'" );
         }
         
         SetVar(_call, s.typeVar);
+        SetVar(*id, s.typeVar);
     }
 
     void Analyser::Visit(ReturnStmt& _rtrn)
@@ -380,12 +386,11 @@ namespace Semantics
     void Analyser::Visit(UnaryExpr& _expr)
     {
         _expr.operand->Accept(*this);
-        InferredType t = ValueType(*_expr.operand);
-        
-        if (IsKnown(t) && t != InferredType::Number)
+        TypeVar var = ValueVar(*_expr.operand);
+
+        if (m_types.Bind(var, InferredType::Number) == false)
             Report(_expr, "operand must be a number");
-        _expr.type = InferredType::Number;
-        Infer(_expr.operand->type, InferredType::Number);
+        SetVar(_expr, m_types.New(InferredType::Number));
     }
 
     void Analyser::Visit(BinaryExpr& _expr)
@@ -394,16 +399,14 @@ namespace Semantics
         InferredType lType = ValueType(*_expr.left);
         _expr.right->Accept(*this);
         InferredType rType = ValueType(*_expr.right);
-        
-        bool lKnown = IsKnown(lType);
-        bool rKnown = IsKnown(rType);
+
         bool poisoned = lType == InferredType::Error || rType == InferredType::Error;
 
         if (_expr.op == TokenType::ADD)
         {
             if (poisoned)
             {
-                _expr.type = InferredType::Error;
+                SetVar(_expr, m_types.New(InferredType::Error));
                 return;
             }
 
@@ -413,17 +416,17 @@ namespace Semantics
             if (incorrect)
             {
                 Report(_expr, std::string("can't add ") + TypeName(lType) + " and " + TypeName(rType));
-                _expr.type = InferredType::Error;
+                SetVar(_expr, m_types.New(InferredType::Error));
                 return;
             }
             
-            _expr.typeVar = _expr.left->typeVar;
+            SetVar(_expr, _expr.left->typeVar);
             return;
         }
 
         bool incorrect = !m_types.Bind(_expr.left->typeVar, InferredType::Number) || !m_types.Bind(_expr.right->typeVar, InferredType::Number);
         if (incorrect && poisoned == false)
             Report(_expr, std::string("operands must be numbers, got ") + TypeName(lType) + " and " + TypeName(rType));
-        _expr.typeVar = m_types.New(InferredType::Number);
+        SetVar(_expr, m_types.New(InferredType::Number));
     }
 }
