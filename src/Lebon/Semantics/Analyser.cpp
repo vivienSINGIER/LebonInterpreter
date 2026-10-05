@@ -1,5 +1,7 @@
 #include "Analyser.h"
 
+#include <vector>
+
 namespace
 {
     char const* TypeName(Semantics::InferredType _type)
@@ -11,8 +13,21 @@ namespace
         case Semantics::InferredType::String:  return "string";
         case Semantics::InferredType::Number:  return "number";
         case Semantics::InferredType::Void:    return "void";
+        case Semantics::InferredType::Error:   return "error";
+        case Semantics::InferredType::Any:     return "any";
         }
         return "unknown";
+    }
+
+    bool IsKnown(Semantics::InferredType _type)
+    {
+        return _type != Semantics::InferredType::Unknown && _type != Semantics::InferredType::Error;
+    }
+
+    void Infer(Semantics::InferredType& _slot, Semantics::InferredType _type)
+    {
+        if (_slot == Semantics::InferredType::Unknown)
+            _slot = _type;
     }
 }
 
@@ -32,7 +47,7 @@ namespace Semantics
         SymbolInfo affiseP;
         affiseP.name = "_out";
         affiseP.type = SymbolType::Param;
-        affiseP.infType = InferredType::Unknown;
+        affiseP.infType = InferredType::Any;
         affiseP.isBuiltIn = true;
         affiseP.isInitialized = false;
         SymbolId id = m_stack->table.Create(affiseP);
@@ -64,7 +79,7 @@ namespace Semantics
             return _expr.type;
         
         Report(_expr, "expression has no value");
-        return InferredType::Unknown;
+        return InferredType::Error;
     }
 
     void Analyser::Visit(Program& _p)
@@ -109,6 +124,7 @@ namespace Semantics
         if (id == InvalidSymbolId)
         {
             Report(_identifier.row, _identifier.column, "unknown identifier '" + _identifier.name + "' used");
+            _identifier.type = InferredType::Error;
             return;
         }
         _identifier.symbol = id;
@@ -117,12 +133,16 @@ namespace Semantics
         if (s.type == SymbolType::Function)
         {
             Report(_identifier.row, _identifier.column, "function '" + s.name + "' used as a value");
+            _identifier.type = InferredType::Error;
             return;
         }
 
-        bool isInitialized = s.isInitialized;
-        if (isInitialized == false)
+        if (s.isInitialized == false)
+        {
             Report(_identifier.row, _identifier.column, "uninitialized identifier '" + _identifier.name + "' used");
+            _identifier.type = InferredType::Error;
+            return;
+        }
 
         _identifier.type = s.infType;
     }
@@ -136,6 +156,7 @@ namespace Semantics
         if (id == InvalidSymbolId)
         {
             Report(_expr.row, _expr.column, "unknown identifier '" + _expr.name + "' used");
+            _expr.type = InferredType::Error;
             return;
         }
         _expr.symbol = id;
@@ -144,16 +165,19 @@ namespace Semantics
         if (s.isBuiltIn)
         {
             Report(_expr.row, _expr.column, "can't assign '" + _expr.name + "' to built-in '" + s.name + "'");
+            _expr.type = InferredType::Error;
             return;
         }
         if (s.type == SymbolType::Function)
         {
             Report(_expr.row, _expr.column, "can't assign var '" + _expr.name + "' to function '" + s.name + "'");
+            _expr.type = InferredType::Error;
             return;
         }
-        if (s.infType != InferredType::Unknown && t != InferredType::Unknown && t != s.infType)
+        if (IsKnown(s.infType) && IsKnown(t) && t != s.infType)
         {
             Report(_expr.row, _expr.column, "variable types don't match"); // TODO clean error
+            _expr.type = InferredType::Error;
             return;
         }
 
@@ -205,7 +229,6 @@ namespace Semantics
         sym.column = _func.column;
         sym.type = SymbolType::Function;
         
-        // Kept as an id, the table grows while the params and the body are visited
         SymbolId funcId = m_stack->Define(_func.name, sym);
         _func.symbol = funcId;
         m_stack->Push(ScopeType::FunctionBody, _func.name);
@@ -241,23 +264,28 @@ namespace Semantics
 
     void Analyser::Visit(CallExpr& _call)
     {
+        std::vector<InferredType> argTypes;
+        argTypes.reserve(_call.args.size());
         for (auto& arg : _call.args)
         {
             arg->Accept(*this);
-            ValueType(*arg);
+            argTypes.push_back(ValueType(*arg));
         }
 
         Identifier* id = dynamic_cast<Identifier*>(_call.callee.get());
         if (id == nullptr)
         {
             Report(_call.row, _call.column, "expression isn't callable");
+            _call.type = InferredType::Error;
             return;
         }
-
+        
         SymbolId funcId = m_stack->Lookup(id->name);
         if (funcId == InvalidSymbolId)
         {
             Report(_call.row, _call.column, "function '" + id->name + "' doesn't exists" );
+            _call.type = InferredType::Error;
+            id->type = InferredType::Error;
             return;
         }
 
@@ -265,6 +293,8 @@ namespace Semantics
         if (s.type != SymbolType::Function)
         {
             Report(_call.row, _call.column, "expression isn't callable");
+            _call.type = InferredType::Error;
+            id->type = InferredType::Error;
             return;
         }
         _call.symbol = funcId;
@@ -273,9 +303,26 @@ namespace Semantics
         if (s.params.size() != _call.args.size())
         {
             Report(_call.row, _call.column, "incorrect argument count for function '" + id->name + "' : expecter (" + std::to_string(s.params.size()) + "), got (" + std::to_string(_call.args.size()) + ")" );
+            _call.type = InferredType::Error;
             return;
         }
 
+        for (size_t i = 0; i < s.params.size(); i++)
+        {
+            SymbolInfo& sym = m_stack->table.Get(s.params[i]);
+            InferredType aType = argTypes[i];
+
+            if (sym.infType == InferredType::Any)
+                continue;
+            if (IsKnown(aType) == false)
+                continue;
+
+            if (sym.infType == InferredType::Unknown)
+                sym.infType = aType;
+            else if (sym.infType != aType)
+                Report(*_call.args[i].get(), std::string("argument type doesn't match function signature, expected '") + TypeName(sym.infType) + "', got '" + TypeName(aType) + "'" );
+        }
+        
         _call.type = s.infType;
     }
 
@@ -311,10 +358,10 @@ namespace Semantics
         }
 
         SymbolInfo& func = m_stack->table.Get(funcId);
-        bool known = type != InferredType::Unknown && func.infType != InferredType::Unknown;
+        bool known = IsKnown(type) && IsKnown(func.infType);
         if (known && type != func.infType)
             Report(_rtrn, std::string("function returns both ") + TypeName(func.infType) + " and " + TypeName(type));
-        else if (type != InferredType::Unknown)
+        else if (func.infType == InferredType::Unknown)
             func.infType = type;
     }
 
@@ -323,9 +370,10 @@ namespace Semantics
         _expr.operand->Accept(*this);
         InferredType t = ValueType(*_expr.operand);
         
-        if (t != InferredType::Number && t != InferredType::Unknown)
+        if (IsKnown(t) && t != InferredType::Number)
             Report(_expr, "operand must be a number");
         _expr.type = InferredType::Number;
+        Infer(_expr.operand->type, InferredType::Number);
     }
 
     void Analyser::Visit(BinaryExpr& _expr)
@@ -335,29 +383,40 @@ namespace Semantics
         _expr.right->Accept(*this);
         InferredType rType = ValueType(*_expr.right);
         
-        bool lKnown = lType != InferredType::Unknown;
-        bool rKnown = rType != InferredType::Unknown;
+        bool lKnown = IsKnown(lType);
+        bool rKnown = IsKnown(rType);
+        bool poisoned = lType == InferredType::Error || rType == InferredType::Error;
 
         if (_expr.op == TokenType::ADD)
         {
-            // number + number or string + string, nothing else
+            if (poisoned)
+            {
+                _expr.type = InferredType::Error;
+                return;
+            }
+
             bool incorrect = lType == InferredType::Bool || rType == InferredType::Bool;
             incorrect = incorrect || (lKnown && rKnown && lType != rType);
 
             if (incorrect)
             {
                 Report(_expr, std::string("can't add ") + TypeName(lType) + " and " + TypeName(rType));
+                _expr.type = InferredType::Error;
                 return;
             }
-
+            
             _expr.type = lKnown && rKnown ? lType : InferredType::Unknown;
+            Infer(_expr.left->type, _expr.type);
+            Infer(_expr.right->type, _expr.type);
             return;
         }
 
         bool incorrect = lKnown && lType != InferredType::Number;
         incorrect = incorrect || (rKnown && rType != InferredType::Number);
-        if (incorrect)
+        if (incorrect && poisoned == false)
             Report(_expr, std::string("operands must be numbers, got ") + TypeName(lType) + " and " + TypeName(rType));
         _expr.type = InferredType::Number;
+        Infer(_expr.left->type, InferredType::Number);
+        Infer(_expr.right->type, InferredType::Number);
     }
 }

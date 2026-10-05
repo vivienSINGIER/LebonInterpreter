@@ -14,7 +14,7 @@ namespace Semantics
     
     enum class InferredType
     {
-        Unknown, Bool, String, Number, Void
+        Unknown, Bool, String, Number, Void, Error, Any
     };
     
     enum class ScopeType
