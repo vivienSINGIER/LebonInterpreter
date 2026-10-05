@@ -1,4 +1,4 @@
-#include "main.h"
+﻿#include "main.h"
 
 #include <iostream>
 
@@ -11,6 +11,7 @@
 #include "Parser/AST.h"
 #include "Parser/ASTPrinter.h"
 #include "Semantics/Analyser.h"
+#include "Interpreter/Interpreter.h"
 
 #include <windows.h>
 
@@ -54,7 +55,11 @@ namespace
                 }
 
                 Semantics::Analyser analyser;
-                analyser.Run(*program);
+                if (analyser.Run(*program))
+                {
+                    Runtime::Interpreter interpreter;
+                    interpreter.Run(*program);
+                }
             }
         }
 
@@ -72,6 +77,7 @@ namespace
         if (stage == "lexing")    return Error::ErrorCode::Lexical;
         if (stage == "parsing")   return Error::ErrorCode::Syntax;
         if (stage == "semantics") return Error::ErrorCode::Semantics;
+        if (stage == "execution") return Error::ErrorCode::Execution;
         return Error::ErrorCode::Ok;
     }
 }
