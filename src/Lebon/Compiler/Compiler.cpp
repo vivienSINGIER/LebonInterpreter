@@ -15,6 +15,9 @@ namespace Bytecode
         m_firstTemp = 0;
         m_errorCount = 0;
         m_registersReported = false;
+        
+        m_locals.clear();
+        m_scopes.clear();
 
         _program.Accept(*this);
 
@@ -29,6 +32,16 @@ namespace Bytecode
     {
         m_target = _dst;
         _node.Accept(*this);
+    }
+
+    LocalVar* Compiler::FindLocal(std::string const& _name)
+    {
+        for (size_t i = m_locals.size(); i > 0; --i)
+        {
+            if (m_locals[i - 1].name == _name)
+                return &m_locals[i - 1];
+        }
+        return nullptr;
     }
 
     uint8_t Compiler::AllocReg(Node const& _at)
@@ -108,6 +121,13 @@ namespace Bytecode
 
     void Compiler::Visit(Identifier& _node)
     {
+        if (LocalVar* local = FindLocal(_node.name))
+        {
+            if (local->registre != m_target)
+                Emit(EncodeABC(OpCode::Move, m_target, local->registre), _node);
+            return;
+        }
+
         uint16_t k = ConstantIndex(Value::MakeString(m_heap.Intern(_node.name)), _node);
         Emit(EncodeABx(OpCode::GetGlobal, m_target, k), _node);
     }
@@ -216,10 +236,29 @@ namespace Bytecode
         m_proto->Emit(EncodeABC(OpCode::Return, 0, 0), lastRow);
     }
 
-    // Pas compile
+    // Variables
     void Compiler::Visit(VarDecl& _node)
     {
-        Report(_node, "variable declarations cannot be compiled yet");
+        size_t saved = m_freeReg;
+
+        uint8_t reg = AllocReg(_node);
+
+        if (_node.init)
+            CompileTo(*_node.init, reg);
+        else
+            Emit(EncodeABC(OpCode::LoadNil, reg), _node);
+
+        if (m_scopes.empty())
+        {
+            uint16_t k = ConstantIndex(Value::MakeString(m_heap.Intern(_node.name)), _node);
+            Emit(EncodeABx(OpCode::SetGlobal, reg, k), _node);
+            m_freeReg = saved;
+        }
+        else
+        {
+            m_locals.push_back({ _node.name, reg });
+            m_firstTemp = m_freeReg;
+        }
     }
 
     void Compiler::Visit(AssignExpr& _node)

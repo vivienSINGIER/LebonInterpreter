@@ -10,6 +10,18 @@
 
 namespace Bytecode
 {
+    struct LocalVar
+    {
+        std::string name;
+        uint8_t registre;
+    };
+
+    struct Scope
+    {
+        size_t localCount; 
+        size_t firstTemp;
+    };
+
     class Compiler : public Visitor
     {
     public:
@@ -43,7 +55,11 @@ namespace Bytecode
         uint32_t m_errorCount = 0;
         bool m_registersReported = false;  
 
+        std::vector<LocalVar> m_locals;    // variables visibles, la plus récente à la fin
+        std::vector<Scope> m_scopes;    // un élément par bloc ouvert, vide = niveau global
+
         void CompileTo(Node& _node, uint8_t _dst);
+        LocalVar* FindLocal(std::string const& _name);
 
         uint8_t AllocReg(Node const& _at);
         bool IsTopTemp(uint8_t _reg) const;
