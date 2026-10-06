@@ -21,7 +21,7 @@ namespace Bytecode
     {
         std::string name;
         uint8_t numParams = 0;
-        uint16_t maxRegisters = 0;     // registers the frame needs, up to MaxRegisters
+        uint8_t maxRegisters = 0;     // registers the frame needs, up to MaxRegisters
 
         std::vector<Instruction> code;
         std::vector<uint32_t> rows;    // source row of each instruction, same size as code

@@ -148,18 +148,7 @@ namespace Bytecode
     // Relit le texte du nombre en float puis le charge depuis le pool de constantes
     void Compiler::Visit(NumberLiteral& _node)
     {
-        float number = 0.0f;
-
-        char const* first = _node.litteral.data();
-        char const* last = first + _node.litteral.size();
-
-        auto result = std::from_chars(first, last, number);
-
-        if (result.ec != std::errc() || result.ptr != last)
-        {
-            Report(_node, "invalid number '" + _node.litteral + "'");
-            return;
-        }
+        float number = _node.value;
 
         uint16_t k = ConstantIndex(Value::MakeNumber(number), _node);
         Emit(EncodeABx(OpCode::LoadK, m_target, k), _node);

@@ -1,9 +1,10 @@
 #include "main.h"
 
-#include <windows.h>
 
 #include "core/Error.h"
 #include "Test/Test.hpp"
+
+#include <windows.h>
 
 // Sans argument   : les tests, puis le programme de démo avec les tokens, l'AST et le bytecode
 // --tests         : les tests seulement
@@ -15,5 +16,5 @@ int main(int argc, char** argv)
     // Second argument set to true also prints the tokens and the AST
     Error::ErrorCode code = Test::RunFile("../../res/Lebon/tests/valid/program.lbn", true);
 
-    return Error::ErrorCode::Ok ? 0 : 1;
+    return static_cast<int>(code);
 }
