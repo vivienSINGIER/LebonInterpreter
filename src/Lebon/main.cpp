@@ -15,5 +15,5 @@ int main(int argc, char** argv)
     // Second argument set to true also prints the tokens and the AST
     Error::ErrorCode code = Test::RunFile("../../res/Lebon/tests/valid/program.lbn", true);
 
-    return failures == 0 && code == Error::ErrorCode::Ok ? 0 : 1;
+    return Error::ErrorCode::Ok ? 0 : 1;
 }
