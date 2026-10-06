@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "Object.hpp"
 
@@ -24,10 +26,21 @@ namespace Bytecode
             return inserted.first->second.get();
         }
 
+        // Creates an object that lives as long as the heap
+        template <typename T, typename... Args>
+        T* New(Args&&... _args)
+        {
+            auto object = std::make_unique<T>(std::forward<Args>(_args)...);
+            T* raw = object.get();
+            m_objects.push_back(std::move(object));
+            return raw;
+        }
+
         size_t StringCount() const { return m_strings.size(); }
 
     private:
         std::unordered_map<std::string, std::unique_ptr<StringObj>> m_strings;
+        std::vector<std::unique_ptr<Obj>> m_objects;
     };
 }
 

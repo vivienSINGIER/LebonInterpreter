@@ -1,4 +1,5 @@
 #include "Value.h"
+#include "Object.hpp"
 
 #include <cstring>
 #include <sstream>
@@ -91,5 +92,10 @@ namespace Bytecode
     Value Value::MakeString(StringObj* _s)
     {
         return MakeObj(ValueType::String, _s);
+    }
+
+    StringObj* Value::AsString() const
+    {
+        return static_cast<StringObj*>(o);
     }
 }
