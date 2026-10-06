@@ -98,11 +98,11 @@ namespace Bytecode
 
             Prototype main;
             main.maxRegisters = 3;
-            int32_t name = main.AddConstant(Value::MakeString(heap.Intern("afise")));
+            std::vector<std::string> globals = { "afise" };
             int32_t hello = main.AddConstant(Value::MakeString(heap.Intern("Lebon")));
             int32_t protoIndex = main.AddProto(std::move(fn));
             main.Emit(EncodeABx(OpCode::Closure, 0, static_cast<uint16_t>(protoIndex)), 3);
-            main.Emit(EncodeABx(OpCode::GetGlobal, 1, static_cast<uint16_t>(name)), 8);
+            main.Emit(EncodeABx(OpCode::GetGlobal, 1, 0), 8);
             main.Emit(EncodeABx(OpCode::LoadK, 2, static_cast<uint16_t>(hello)), 8);
             main.Emit(EncodeABC(OpCode::Call, 1, 1), 8);
             size_t jump = main.Emit(EncodeAsBx(OpCode::Jmp, 0, 0), 9);
@@ -111,13 +111,13 @@ namespace Bytecode
             main.Emit(EncodeABC(OpCode::Return, 0, 0), 10);
 
             std::ostringstream out;
-            Disassemble(main, out);
+            Disassemble(main, out, globals);
 
             std::string expected =
                 "== function <main> (params=0, registers=3) ==\n"
                 "0000  L3   CLOSURE   R0 P0  ; addition\n"
-                "0001  L8   GETGLOBAL R1 K0  ; \"afise\"\n"
-                "0002  L8   LOADK     R2 K1  ; \"Lebon\"\n"
+                "0001  L8   GETGLOBAL R1 G0  ; afise\n"
+                "0002  L8   LOADK     R2 K0  ; \"Lebon\"\n"
                 "0003  L8   CALL      R1 1\n"
                 "0004  L9   JMP       -> 0006\n"
                 "0005  L9   LOADBOOL  R1 1\n"

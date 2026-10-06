@@ -1,34 +1,34 @@
 == function <main> (params=0, registers=5) ==
 0000  L3   CLOSURE   R0 P0  ; addition
-0001  L3   SETGLOBAL R0 K0  ; "addition"
+0001  L3   SETGLOBAL R0 G1  ; addition
 0002  L8   CLOSURE   R0 P1  ; prézant
-0003  L8   SETGLOBAL R0 K1  ; "prézant"
+0003  L8   SETGLOBAL R0 G2  ; prézant
 0004  L14  CLOSURE   R0 P2  ; faktoryel
-0005  L14  SETGLOBAL R0 K2  ; "faktoryel"
+0005  L14  SETGLOBAL R0 G3  ; faktoryel
 0006  L19  CLOSURE   R0 P3  ; compteur
-0007  L19  SETGLOBAL R0 K3  ; "compteur"
-0008  L30  GETGLOBAL R0 K0  ; "addition"
-0009  L30  LOADK     R1 K4  ; 2
-0010  L30  LOADK     R2 K5  ; 3
+0007  L19  SETGLOBAL R0 G4  ; compteur
+0008  L30  GETGLOBAL R0 G1  ; addition
+0009  L30  LOADK     R1 K0  ; 2
+0010  L30  LOADK     R2 K1  ; 3
 0011  L30  CALL      R0 2
-0012  L30  SETGLOBAL R0 K6  ; "somme"
-0013  L31  GETGLOBAL R0 K7  ; "afise"
-0014  L31  GETGLOBAL R1 K6  ; "somme"
+0012  L30  SETGLOBAL R0 G5  ; somme
+0013  L31  GETGLOBAL R0 G0  ; afise
+0014  L31  GETGLOBAL R1 G5  ; somme
 0015  L31  CALL      R0 1
-0016  L32  GETGLOBAL R0 K7  ; "afise"
-0017  L32  GETGLOBAL R1 K0  ; "addition"
-0018  L32  LOADK     R2 K8  ; 1
-0019  L32  GETGLOBAL R3 K2  ; "faktoryel"
-0020  L32  LOADK     R4 K5  ; 3
+0016  L32  GETGLOBAL R0 G0  ; afise
+0017  L32  GETGLOBAL R1 G1  ; addition
+0018  L32  LOADK     R2 K2  ; 1
+0019  L32  GETGLOBAL R3 G3  ; faktoryel
+0020  L32  LOADK     R4 K1  ; 3
 0021  L32  CALL      R3 1
 0022  L32  CALL      R1 2
 0023  L32  CALL      R0 1
-0024  L33  GETGLOBAL R0 K7  ; "afise"
-0025  L33  GETGLOBAL R1 K3  ; "compteur"
-0026  L33  LOADK     R2 K9  ; 10
+0024  L33  GETGLOBAL R0 G0  ; afise
+0025  L33  GETGLOBAL R1 G4  ; compteur
+0026  L33  LOADK     R2 K3  ; 10
 0027  L33  CALL      R1 1
 0028  L33  CALL      R0 1
-0029  L34  GETGLOBAL R0 K1  ; "prézant"
+0029  L34  GETGLOBAL R0 G2  ; prézant
 0030  L34  CALL      R0 0
 0031  L34  RETURN    R0 0
 
@@ -40,17 +40,17 @@
 0004  L5   RETURN    R0 0
 
 == function prézant (params=0, registers=2) ==
-0000  L10  GETGLOBAL R0 K0  ; "afise"
-0001  L10  LOADK     R1 K1  ; "Lebon"
+0000  L10  GETGLOBAL R0 G0  ; afise
+0001  L10  LOADK     R1 K0  ; "Lebon"
 0002  L10  CALL      R0 1
 0003  L11  RETURN    R0 0
 0004  L11  RETURN    R0 0
 
 == function faktoryel (params=1, registers=5) ==
 0000  L16  MOVE      R1 R0
-0001  L16  GETGLOBAL R2 K0  ; "faktoryel"
+0001  L16  GETGLOBAL R2 G3  ; faktoryel
 0002  L16  MOVE      R3 R0
-0003  L16  LOADK     R4 K1  ; 1
+0003  L16  LOADK     R4 K0  ; 1
 0004  L16  SUB       R3 R3 R4
 0005  L16  CALL      R2 1
 0006  L16  MUL       R1 R1 R2

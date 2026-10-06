@@ -43,7 +43,7 @@ namespace Bytecode
     public:
         explicit Compiler(Heap& _heap) : m_heap(_heap) {}
 
-        // Renvoie la fonction main ou nullptr si erreur
+        // Renvoie la fonction main ou nullptr si erreur. Le programme doit avoir passe l'analyse semantique sans erreur
         std::unique_ptr<Prototype> Compile(Program& _program);
 
         void Visit(NumberLiteral& _node) override;
@@ -63,6 +63,7 @@ namespace Bytecode
 
     private:
         Heap& m_heap;
+        Semantics::SymbolTable* m_symbols = nullptr;   // table du programme en cours de compilation
 
         std::deque<FuncState> m_funcs;     // deque : les references restent valides quand on empile
         uint8_t m_target = 0;
@@ -88,6 +89,8 @@ namespace Bytecode
 
         size_t Emit(Instruction _i, Node const& _at);
         uint16_t ConstantIndex(Value const& _v, Node const& _at);
+        // Slot de la globale designee par le symbole, attribue par l'analyseur
+        uint16_t GlobalSlot(Semantics::SymbolId _id, Node const& _at);
 
         void Report(Node const& _at, std::string const& _message);
     };

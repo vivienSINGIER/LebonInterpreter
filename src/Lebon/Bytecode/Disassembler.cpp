@@ -13,6 +13,7 @@ namespace Bytecode
             {
             case Operand::Reg:   return "R" + std::to_string(_value);
             case Operand::Const: return "K" + std::to_string(_value);
+            case Operand::Global: return "G" + std::to_string(_value);
             case Operand::Upval: return "U" + std::to_string(_value);
             case Operand::Proto: return "P" + std::to_string(_value);
             case Operand::Imm:   return std::to_string(_value);
@@ -37,7 +38,7 @@ namespace Bytecode
         }
     }
 
-    std::string DisassembleInstruction(Prototype const& _proto, size_t _index)
+    std::string DisassembleInstruction(Prototype const& _proto, size_t _index, std::vector<std::string> const& _globals)
     {
         Instruction i = _proto.code[_index];
         OpCode op = GetOp(i);
@@ -67,13 +68,15 @@ namespace Bytecode
         // Show what the constant actually is
         if (bKind == Operand::Const && static_cast<size_t>(b) < _proto.constants.size())
             out << "  ; " << ToDebugString(_proto.constants[b]);
+        else if (bKind == Operand::Global && static_cast<size_t>(b) < _globals.size())
+            out << "  ; " << _globals[b];
         else if (bKind == Operand::Proto && static_cast<size_t>(b) < _proto.protos.size())
             out << "  ; " << _proto.protos[b]->name;
 
         return out.str();
     }
 
-    void Disassemble(Prototype const& _proto, std::ostream& _out)
+    void Disassemble(Prototype const& _proto, std::ostream& _out, std::vector<std::string> const& _globals)
     {
         _out << "== function " << (_proto.name.empty() ? "<main>" : _proto.name)
              << " (params=" << static_cast<int>(_proto.numParams)
@@ -83,13 +86,13 @@ namespace Bytecode
         {
             _out << std::setw(4) << std::setfill('0') << i << std::setfill(' ')
                  << "  L" << std::left << std::setw(3) << _proto.rows[i] << std::right
-                 << " " << DisassembleInstruction(_proto, i) << "\n";
+                 << " " << DisassembleInstruction(_proto, i, _globals) << "\n";
         }
 
         for (auto const& child : _proto.protos)
         {
             _out << "\n";
-            Disassemble(*child, _out);
+            Disassemble(*child, _out, _globals);
         }
     }
 }

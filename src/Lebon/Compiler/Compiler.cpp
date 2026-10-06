@@ -15,6 +15,7 @@ namespace Bytecode
         m_funcs.emplace_back();
         Func().proto = main.get();
 
+        m_symbols = &_program.stack.table;
         m_target = 0;
         m_errorCount = 0;
         m_registersReported = false;
@@ -22,6 +23,7 @@ namespace Bytecode
         _program.Accept(*this);
 
         m_funcs.clear();
+        m_symbols = nullptr;
         if (m_errorCount > 0)
             return nullptr;
 
@@ -137,6 +139,26 @@ namespace Bytecode
         return static_cast<uint16_t>(index);
     }
 
+    // Slot de la globale dans le tableau de la VM : les globales sont lues par index, plus par nom
+    uint16_t Compiler::GlobalSlot(Semantics::SymbolId _id, Node const& _at)
+    {
+        uint32_t slot = Semantics::InvalidGlobalSlot;
+        if (_id != Semantics::InvalidSymbolId)
+            slot = m_symbols->Get(_id).globalSlot;
+
+        if (slot == Semantics::InvalidGlobalSlot)
+        {
+            Report(_at, "name isn't resolved to a global");
+            return 0;
+        }
+        if (slot > MaxBx)
+        {
+            Report(_at, "too many globals in the program");
+            return 0;
+        }
+        return static_cast<uint16_t>(slot);
+    }
+
     // Journalise une erreur à la position du noeud, Compile renverra alors nullptr
     void Compiler::Report(Node const& _at, std::string const& _message)
     {
@@ -184,8 +206,7 @@ namespace Bytecode
             return;
         }
 
-        uint16_t k = ConstantIndex(Value::MakeString(m_heap.Intern(_node.name)), _node);
-        Emit(EncodeABx(OpCode::GetGlobal, m_target, k), _node);
+        Emit(EncodeABx(OpCode::GetGlobal, m_target, GlobalSlot(_node.symbol, _node)), _node);
     }
 
     // Moins unaire : compile l'opérande (dans _dst si c'est un temporaire libre) puis NEG
@@ -210,14 +231,24 @@ namespace Bytecode
         Func().freeReg = saved;
     }
 
-    // Opération binaire : choisit l'opcode, compile le côté gauche puis le droit dans deux registres, puis émet l'opération
+    // Opération binaire : choisit l'opcode, compile le côté gauche puis le droit dans deux registres, puis émet l'opération.
+    // L'addition est typée par l'analyseur : ADD pour les nombres, CONCAT pour les chaînes, la VM n'a rien à tester
     void Compiler::Visit(BinaryExpr& _node)
     {
         OpCode op = OpCode::Add;
         switch (_node.op)
         {
         case TokenType::ADD:
-            op = OpCode::Add; break;
+            if (_node.type == Semantics::InferredType::Number)
+                op = OpCode::Add;
+            else if (_node.type == Semantics::InferredType::String)
+                op = OpCode::Concat;
+            else
+            {
+                Report(_node, "can't infer the type of this addition");
+                return;
+            }
+            break;
         case TokenType::SUB:
             op = OpCode::Sub; break;
         case TokenType::MUL:
@@ -311,8 +342,7 @@ namespace Bytecode
         }
         else
         {
-            uint16_t k = ConstantIndex(Value::MakeString(m_heap.Intern(_node.name)), _node);
-            Emit(EncodeABx(OpCode::SetGlobal, valueReg, k), _node);
+            Emit(EncodeABx(OpCode::SetGlobal, valueReg, GlobalSlot(_node.symbol, _node)), _node);
         }
 
         Func().freeReg = saved;
@@ -365,8 +395,7 @@ namespace Bytecode
 
         if (IsGlobalScope())
         {
-            uint16_t k = ConstantIndex(Value::MakeString(m_heap.Intern(_node.name)), _node);
-            Emit(EncodeABx(OpCode::SetGlobal, reg, k), _node);
+            Emit(EncodeABx(OpCode::SetGlobal, reg, GlobalSlot(_node.symbol, _node)), _node);
             fn.freeReg = saved;
         }
         else
@@ -475,8 +504,7 @@ namespace Bytecode
 
         if (global)
         {
-            uint16_t k = ConstantIndex(Value::MakeString(m_heap.Intern(_node.name)), _node);
-            Emit(EncodeABx(OpCode::SetGlobal, reg, k), _node);
+            Emit(EncodeABx(OpCode::SetGlobal, reg, GlobalSlot(_node.symbol, _node)), _node);
             fn.freeReg = saved;
         }
     }
