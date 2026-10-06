@@ -7,7 +7,7 @@
 #include "Parser/AST.h"
 #include "Parser/ASTPrinter.h"
 #include "Semantics/Analyser.h"
-#include "Interpreter/Interpreter.h"
+#include "Tree-Walking/TreeWalking.h"
 
 #include <windows.h>
 
@@ -31,20 +31,16 @@ namespace
             if (program && ErrorManager::HasErrors() == false)
             {
                 Semantics::Analyser analyser;
-                analyser.Run(*program);
-
-                // Printed after the analysis so the types and symbol ids are filled
+                if (analyser.Run(*program))
+                {
+                    RUNTIME::TreeWalking treeWalking;
+                    treeWalking.Run(*program);
+                }
+                
                 if (_verbose)
                 {
                     AstPrinter printer;
                     printer.Print(*program);
-                }
-
-                Semantics::Analyser analyser;
-                if (analyser.Run(*program))
-                {
-                    Runtime::Interpreter interpreter;
-                    interpreter.Run(*program);
                 }
             }
         }
@@ -61,7 +57,7 @@ int main()
     SetConsoleOutputCP(CP_UTF8);
 
     // Second argument set to true also prints the tokens and the AST
-    Error::ErrorCode code = RunFile("../../res/Lebon/tests/valid/program.lbn", true);
+    Error::ErrorCode code = RunFile("../../res/Lebon/tests/TreeWalking/testTreeWalking.lbn", true);
 
     return code == Error::ErrorCode::Ok ? 0 : 1;
 }
