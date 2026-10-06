@@ -81,6 +81,19 @@ namespace Bytecode
             Check(GetSBx(p.code[back]) == -2, "backward jump patched");
         }
 
+        void TestCompiledProgram()
+        {
+            CompiledProgram empty;
+            Check(!empty && empty.GlobalCount() == 0, "empty result is a failed compilation");
+
+            CompiledProgram program;
+            program.main = std::make_unique<Prototype>();
+            program.globalNames = { "afise", "total", "x" };
+            Check(static_cast<bool>(program) && program.GlobalCount() == 3, "result with a main is a success");
+            Check(program.FindGlobal("afise") == 0 && program.FindGlobal("x") == 2, "global slot found by name");
+            Check(program.FindGlobal("inconnu") == CompiledProgram::NoGlobal, "unknown global has no slot");
+        }
+
         // addition(a, b) : keksoz c idon a èk b fwa 2 ... ran c
         void TestDisassembly()
         {
@@ -142,6 +155,7 @@ namespace Bytecode
         TestValues();
         TestConstantPool();
         TestJumpPatching();
+        TestCompiledProgram();
         TestDisassembly();
         return g_failures == 0;
     }

@@ -6,14 +6,16 @@
 
 namespace Bytecode
 {
-    // Point d'entrée : repart d'un main vide et y compile tout le programme
-    std::unique_ptr<Prototype> Compiler::Compile(Program& _program)
+    // Point d'entrée : repart d'un main vide et y compile tout le programme.
+    // Le résultat porte aussi les noms des globales, dans l'ordre des slots utilisés par GETGLOBAL / SETGLOBAL
+    CompiledProgram Compiler::Compile(Program& _program)
     {
-        auto main = std::make_unique<Prototype>();
+        CompiledProgram result;
+        result.main = std::make_unique<Prototype>();
 
         m_funcs.clear();
         m_funcs.emplace_back();
-        Func().proto = main.get();
+        Func().proto = result.main.get();
 
         m_symbols = &_program.stack.table;
         m_target = 0;
@@ -22,12 +24,14 @@ namespace Bytecode
 
         _program.Accept(*this);
 
+        result.globalNames = m_symbols->GlobalNames();
+
         m_funcs.clear();
         m_symbols = nullptr;
         if (m_errorCount > 0)
-            return nullptr;
+            return CompiledProgram();
 
-        return main;
+        return result;
     }
 
     // Vrai dans main hors de tout bloc : une variable déclarée ici est une globale

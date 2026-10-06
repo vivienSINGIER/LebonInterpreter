@@ -73,6 +73,33 @@ namespace Bytecode
             return static_cast<int32_t>(protos.size() - 1);
         }
     };
+
+    // Tout ce que la VM reçoit du compilateur : la fonction main et la table des globales.
+    // Les strings des constantes vivent dans le Heap, qui doit rester le même pour la VM
+    struct CompiledProgram
+    {
+        static constexpr size_t NoGlobal = SIZE_MAX;
+
+        std::unique_ptr<Prototype> main;
+        std::vector<std::string> globalNames;   // nom de chaque globale, indexé par slot (Globals[Bx])
+
+        // Vrai si la compilation a réussi
+        explicit operator bool() const { return main != nullptr; }
+
+        // Nombre de cases que la VM doit réserver pour les globales
+        size_t GlobalCount() const { return globalNames.size(); }
+
+        // Slot d'une globale à partir de son nom (par exemple "afise" pour y installer le natif), NoGlobal si absente
+        size_t FindGlobal(std::string const& _name) const
+        {
+            for (size_t i = 0; i < globalNames.size(); ++i)
+            {
+                if (globalNames[i] == _name)
+                    return i;
+            }
+            return NoGlobal;
+        }
+    };
 }
 
 #endif

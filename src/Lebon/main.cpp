@@ -13,8 +13,23 @@ int main(int argc, char** argv)
 {
     SetConsoleOutputCP(CP_UTF8);
 
-    // Second argument set to true also prints the tokens and the AST
-    Error::ErrorCode code = Test::RunFile("../../res/Lebon/tests/valid/program.lbn", true);
+    std::string arg = argc > 1 ? argv[1] : "";
 
-    return static_cast<int>(code);
+    if (arg.empty() == false && arg != "--tests")
+        return Test::RunFile(fs::path(arg), true) == Error::ErrorCode::Ok ? 0 : 1;
+
+    int failures = Test::RunAllTests();
+    if (arg == "--tests")
+        return failures == 0 ? 0 : 1;
+
+    // Le second argument à true affiche aussi les tokens, l'AST et le bytecode
+    fs::path demo = "../../res/Lebon/tests/valid/program.lbn";
+    fs::path tests;
+    if (Test::FindTestsDir(tests).IsOk())
+        demo = tests / "valid" / "program.lbn";
+
+    Log::Log(LogType::PromptInfo, "\n[demo] valid/program.lbn\n");
+    Error::ErrorCode code = Test::RunFile(demo, true);
+
+    return failures == 0 && code == Error::ErrorCode::Ok ? 0 : 1;
 }

@@ -43,8 +43,9 @@ namespace Bytecode
     public:
         explicit Compiler(Heap& _heap) : m_heap(_heap) {}
 
-        // Renvoie la fonction main ou nullptr si erreur. Le programme doit avoir passe l'analyse semantique sans erreur
-        std::unique_ptr<Prototype> Compile(Program& _program);
+        // Renvoie la fonction main et la table des globales. Resultat vide (main == nullptr) si erreur.
+        // Le programme doit avoir passe l'analyse semantique sans erreur
+        CompiledProgram Compile(Program& _program);
 
         void Visit(NumberLiteral& _node) override;
         void Visit(StringLiteral& _node) override;
