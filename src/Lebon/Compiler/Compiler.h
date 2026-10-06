@@ -68,13 +68,12 @@ namespace Bytecode
         uint8_t m_target = 0;
         uint32_t m_errorCount = 0;
         bool m_registersReported = false;
-
-        FuncState& Fn() { return m_funcs.back(); }
-        FuncState const& Fn() const { return m_funcs.back(); }
+          
+        FuncState& Func() { return m_funcs.back(); }
         Prototype& Proto() { return *m_funcs.back().proto; }
 
         // Vrai si une variable declaree ici est une globale (main, hors de tout bloc)
-        bool IsGlobalScope() const;
+        bool IsGlobalScope();
 
         void CompileTo(Node& _node, uint8_t _dst);
         std::unique_ptr<Prototype> CompileFunction(FuncDecl& _node);
@@ -85,7 +84,7 @@ namespace Bytecode
         int ResolveUpvalue(size_t _level, std::string const& _name, Node const& _at);
 
         uint8_t AllocReg(Node const& _at);
-        bool IsTopTemp(uint8_t _reg) const;
+        bool IsTopTemp(uint8_t _reg);
 
         size_t Emit(Instruction _i, Node const& _at);
         uint16_t ConstantIndex(Value const& _v, Node const& _at);

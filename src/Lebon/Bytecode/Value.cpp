@@ -70,7 +70,7 @@ namespace Bytecode
         return value;
     }
 
-    Value Value::MakeNumber(double _n)
+    Value Value::MakeNumber(float _n)
     {
         Value value; 
         value.type = ValueType::Number; 

@@ -51,10 +51,10 @@ namespace
                 // Printed after the analysis so the types and symbol ids are filled
                 if (_verbose)
                 {
-                    AstPrinter printer;
-                    printer.Print(*program);
+                    //AstPrinter printer;
+                    //printer.Print(*program);
                 }
-
+                                         
                 if (ErrorManager::HasErrors() == false)
                 {
                     Bytecode::Heap heap;

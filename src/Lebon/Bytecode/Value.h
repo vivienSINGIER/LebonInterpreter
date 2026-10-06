@@ -24,7 +24,7 @@ namespace Bytecode
 
         static Value MakeNil() { return Value(); }
         static Value MakeBool(bool _b);
-        static Value MakeNumber(double _n);
+        static Value MakeNumber(float _n);
         static Value MakeObj(ValueType _type, Obj* _o);
         static Value MakeString(StringObj* _s);
 

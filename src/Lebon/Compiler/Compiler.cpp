@@ -13,7 +13,7 @@ namespace Bytecode
 
         m_funcs.clear();
         m_funcs.emplace_back();
-        Fn().proto = main.get();
+        Func().proto = main.get();
 
         m_target = 0;
         m_errorCount = 0;
@@ -29,9 +29,9 @@ namespace Bytecode
     }
 
     // Vrai dans main hors de tout bloc : une variable déclarée ici est une globale
-    bool Compiler::IsGlobalScope() const
+    bool Compiler::IsGlobalScope()
     {
-        return m_funcs.size() == 1 && Fn().scopes.empty();
+        return m_funcs.size() == 1 && Func().scopes.empty();
     }
 
     // Compile une expression pour que sa valeur finisse dans le registre _dst
@@ -96,7 +96,7 @@ namespace Bytecode
     // Réserve le prochain registre libre et agrandit la taille de frame de la fonction si besoin
     uint8_t Compiler::AllocReg(Node const& _at)
     {
-        FuncState& fn = Fn();
+        FuncState& fn = Func();
         if (fn.freeReg >= MaxRegisters)
         {
             if (m_registersReported == false)
@@ -113,10 +113,10 @@ namespace Bytecode
     }
 
     // Vrai si c'est le dernier temporaire alloué : on peut le réutiliser tel quel
-    bool Compiler::IsTopTemp(uint8_t _register) const
+    bool Compiler::IsTopTemp(uint8_t _register)
     {
-        FuncState const& fn = Fn();
-        return _register >= fn.firstTemp && static_cast<size_t>(_register) + 1 == fn.freeReg;
+        FuncState const& func = Func();
+        return _register >= func.firstTemp && static_cast<size_t>(_register) + 1 == func.freeReg;
     }
 
     // Ajoute une instruction à la fonction courante avec la ligne source du noeud
@@ -145,10 +145,10 @@ namespace Bytecode
     }
 
     // Expressions
-    // Relit le texte du nombre en double puis le charge depuis le pool de constantes
+    // Relit le texte du nombre en float puis le charge depuis le pool de constantes
     void Compiler::Visit(NumberLiteral& _node)
     {
-        double number = 0.0;
+        float number = 0.0f;
 
         char const* first = _node.litteral.data();
         char const* last = first + _node.litteral.size();
@@ -181,7 +181,7 @@ namespace Bytecode
     // Lecture d'une variable : locale (MOVE), sinon upvalue (GETUPVAL), sinon globale (GETGLOBAL)
     void Compiler::Visit(Identifier& _node)
     {
-        if (LocalVar* local = FindLocal(Fn(), _node.name))
+        if (LocalVar* local = FindLocal(Func(), _node.name))
         {
             if (local->registre != m_target)
                 Emit(EncodeABC(OpCode::Move, m_target, local->registre), _node);
@@ -209,7 +209,7 @@ namespace Bytecode
         }
 
         uint8_t dst = m_target;
-        size_t saved = Fn().freeReg;
+        size_t saved = Func().freeReg;
 
         uint8_t operand = dst;
         if (IsTopTemp(dst) == false)
@@ -218,7 +218,7 @@ namespace Bytecode
         CompileTo(*_node.operand, operand);
         Emit(EncodeABC(OpCode::Neg, dst, operand), _node);
 
-        Fn().freeReg = saved;
+        Func().freeReg = saved;
     }
 
     // Opération binaire : choisit l'opcode, compile le côté gauche puis le droit dans deux registres, puis émet l'opération
@@ -241,7 +241,7 @@ namespace Bytecode
         }
 
         uint8_t dst = m_target;
-        size_t saved = Fn().freeReg;
+        size_t saved = Func().freeReg;
 
         uint8_t left = dst;
         if (IsTopTemp(dst) == false)
@@ -253,7 +253,7 @@ namespace Bytecode
 
         Emit(EncodeABC(op, dst, left, right), _node);
 
-        Fn().freeReg = saved;
+        Func().freeReg = saved;
     }
 
     // Appel : la fonction dans un registre "base", les arguments dans les registres qui suivent, puis CALL.
@@ -267,7 +267,7 @@ namespace Bytecode
         }
 
         uint8_t dst = m_target;
-        size_t saved = Fn().freeReg;
+        size_t saved = Func().freeReg;
 
         uint8_t base = dst;
         if (IsTopTemp(dst) == false)
@@ -284,7 +284,7 @@ namespace Bytecode
         if (base != dst)
             Emit(EncodeABC(OpCode::Move, dst, base), _node);
 
-        Fn().freeReg = saved;
+        Func().freeReg = saved;
     }
 
     // Affectation utilisée comme expression : sa valeur est aussi laissée dans _dst
@@ -298,9 +298,9 @@ namespace Bytecode
     void Compiler::CompileAssign(AssignExpr& _node, bool _wantValue)
     {
         uint8_t dst = m_target;
-        size_t saved = Fn().freeReg;
+        size_t saved = Func().freeReg;
 
-        if (LocalVar* local = FindLocal(Fn(), _node.name))
+        if (LocalVar* local = FindLocal(Func(), _node.name))
         {
             uint8_t reg = local->registre;
 
@@ -326,14 +326,14 @@ namespace Bytecode
             Emit(EncodeABx(OpCode::SetGlobal, valueReg, k), _node);
         }
 
-        Fn().freeReg = saved;
+        Func().freeReg = saved;
     }
 
     // Statements
     // Expression utilisée comme instruction : sa valeur est jetée, les registres sont libérés ensuite
     void Compiler::Visit(ExprStmt& _node)
     {
-        size_t saved = Fn().freeReg;
+        size_t saved = Func().freeReg;
 
         if (auto* assign = dynamic_cast<AssignExpr*>(_node.expr.get()))
         {
@@ -346,7 +346,7 @@ namespace Bytecode
             CompileTo(*_node.expr, reg);
         }
 
-        Fn().freeReg = saved;
+        Func().freeReg = saved;
     }
 
     // Compile chaque instruction du programme puis termine main par un RETURN
@@ -364,7 +364,7 @@ namespace Bytecode
     // Global : SETGLOBAL puis le registre est libéré. Local : le registre devient la variable
     void Compiler::Visit(VarDecl& _node)
     {
-        FuncState& fn = Fn();
+        FuncState& fn = Func();
         size_t saved = fn.freeReg;
 
         uint8_t reg = AllocReg(_node);
@@ -396,19 +396,19 @@ namespace Bytecode
             return;
         }
 
-        size_t saved = Fn().freeReg;
+        size_t saved = Func().freeReg;
 
         uint8_t reg = AllocReg(_node);
         CompileTo(*_node.value, reg);
         Emit(EncodeABC(OpCode::Return, reg, 1), _node);
 
-        Fn().freeReg = saved;
+        Func().freeReg = saved;
     }
 
     // Ouvre une portée, compile les instructions, puis oublie les locales du bloc et libère leurs registres
     void Compiler::Visit(Block& _node)
     {
-        FuncState& fn = Fn();
+        FuncState& fn = Func();
         fn.scopes.push_back({ fn.locals.size(), fn.firstTemp });
 
         for (NodePtr& statement : _node.statements)
@@ -434,7 +434,7 @@ namespace Bytecode
         proto->numParams = static_cast<uint8_t>(_node.params.size());
 
         m_funcs.emplace_back();
-        FuncState& fn = Fn();
+        FuncState& fn = Func();
         fn.proto = proto.get();
 
         // The parameters are the first locals, one register each
@@ -462,7 +462,7 @@ namespace Bytecode
     void Compiler::Visit(FuncDecl& _node)
     {
         bool global = IsGlobalScope();
-        FuncState& fn = Fn();
+        FuncState& fn = Func();
         size_t saved = fn.freeReg;
 
         uint8_t reg = AllocReg(_node);
