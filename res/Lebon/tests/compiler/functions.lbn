@@ -1,0 +1,34 @@
+koz Compile : functions, returns, recursion and closures finkoz
+
+zafer addition(a, b)
+ouver
+    ran a èk b
+fèrm
+
+zafer prézant()
+ouver
+    afise("Lebon")
+    ran
+sétou
+
+zafer faktoryel(n)
+ouver
+    ran n fwa faktoryel(n mwin 1)
+fèrm
+
+zafer compteur(depa)
+ouver
+    keksoz total idon depa
+    zafer ajoute(n)
+    ouver
+        total idon total èk n
+        ran total
+    fèrm
+    ran ajoute(1)
+fèrm
+
+keksoz somme idon addition(2, 3)
+afise(somme)
+afise(addition(1, faktoryel(3)))
+afise(compteur(10))
+prézant()

@@ -1,0 +1,11 @@
+koz Compile : operators, precedence and unary minus finkoz
+
+afise(1 èk 2 fwa 3)
+afise((1 èk 2) fwa 3)
+afise(10 mwin 4 mwin 1)
+afise(100 koup 5 koup 2)
+afise(mwin 4)
+afise(mwin (1 èk 2) fwa 3)
+afise((1 èk 2) fwa (3 mwin 5) koup 4)
+afise(1 èk (2 èk (3 èk 4)))
+afise("Bonzour " èk "Lebon" èk " !")

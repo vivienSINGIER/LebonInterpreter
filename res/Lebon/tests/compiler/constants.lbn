@@ -1,0 +1,11 @@
+koz Compile : literals, one afise call each finkoz
+
+afise(42)
+afise(3.14)
+afise("Lebon")
+afise("")
+afise(vré)
+afise(fo)
+koz the same constant is stored once finkoz
+afise(42)
+afise("Lebon")
