@@ -111,10 +111,8 @@ namespace
 
             Runtime::ConsoleSink console;
             Runtime::NullSink null;
-            Runtime::Arena arena;
 
             Runtime::Context context;
-            context.arena = &arena;
             context.out = _options.noOutput ? static_cast<Runtime::OutputSink*>(&null) : &console;
 
             times.Measure("run", [&] {

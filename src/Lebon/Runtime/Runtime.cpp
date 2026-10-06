@@ -47,16 +47,6 @@ namespace Runtime
         return _value ? "vr\xC3\xA9" : "fo";
     }
 
-    String const* MakeString(Context* _ctx, std::string_view _text)
-    {
-        return MakeString(*_ctx->arena, _text);
-    }
-
-    String const* Concat(Context* _ctx, String const* _left, String const* _right)
-    {
-        return Concat(*_ctx->arena, _left, _right);
-    }
-
     void PrintNumber(Context* _ctx, Number _value)
     {
         char buffer[NumberBufferSize + 1];
@@ -65,9 +55,9 @@ namespace Runtime
         _ctx->out->Write({ buffer, length });
     }
 
-    void PrintString(Context* _ctx, String const* _value)
+    void PrintString(Context* _ctx, std::string const& _value)
     {
-        _ctx->out->Write(_value->View());
+        _ctx->out->Write(_value);
         _ctx->out->Write("\n");
     }
 
