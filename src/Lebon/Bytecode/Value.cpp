@@ -31,7 +31,7 @@ namespace Bytecode
             return false;
 
         if (_left.type == ValueType::Number)
-            return std::memcmp(&_left.n, &_right.n, sizeof(double)) == 0;
+            return std::memcmp(&_left.n, &_right.n, sizeof(float)) == 0;
 
         return _left == _right;
     }

@@ -1,5 +1,7 @@
 #include "Analyser.h"
 
+#include "TypeDefaulter.h"
+
 #include <vector>
 
 namespace
@@ -38,7 +40,11 @@ namespace Semantics
     {
         m_stack = &_program.stack;
         _program.Accept(*this);
-        
+
+        // Additions nothing constrained become numbers, before the types are written back
+        TypeDefaulter defaulter(m_types);
+        defaulter.Run(_program);
+
         for (Expr* e : m_exprs) e->type = m_types.Get(e->typeVar);
         for (SymbolInfo& s : m_stack->table.symbols)
         {

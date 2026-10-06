@@ -14,13 +14,14 @@ namespace Bytecode
         LoadBool,   // A B      R[A] = (B != 0)
         LoadNil,    // A        R[A] = nil
 
-        GetGlobal,  // A Bx     R[A] = Globals[K[Bx]]
-        SetGlobal,  // A Bx     Globals[K[Bx]] = R[A]
+        GetGlobal,  // A Bx     R[A] = Globals[Bx]
+        SetGlobal,  // A Bx     Globals[Bx] = R[A]
         GetUpval,   // A B      R[A] = Upvalues[B]
         SetUpval,   // A B      Upvalues[B] = R[A]
 
-        Add,        // A B C    R[A] = R[B] + R[C]  (numbers added, strings joined)
-        Sub,        // A B C    R[A] = R[B] - R[C]
+        Add,        // A B C    R[A] = R[B] + R[C]  (numbers only, the compiler picks Concat for strings)
+        Concat,     // A B C    R[A] = R[B] .. R[C] (strings only)
+        Sub,       // A B C    R[A] = R[B] - R[C]
         Mul,        // A B C    R[A] = R[B] * R[C]
         Div,        // A B C    R[A] = R[B] / R[C]
         Neg,        // A B      R[A] = -R[B]
@@ -46,8 +47,8 @@ namespace Bytecode
     constexpr uint32_t MaxBx = 0xFFFF;
     constexpr int32_t MaxSBx = 0x7FFF;
 
-    // Singification de l'operand, utilisé par le désassembleur
-    enum class Operand : uint8_t { None, Reg, Const, Imm, Upval, Proto, Jump };
+    // Singification de l'operand, utilisï¿½ par le dï¿½sassembleur
+    enum class Operand : uint8_t { None, Reg, Const, Global, Imm, Upval, Proto, Jump };
     enum class OpFormat : uint8_t { ABC, ABx, AsBx };
 
     struct OpInfo
@@ -67,11 +68,12 @@ namespace Bytecode
             { "LOADK",     F::ABx,  O::Reg,  O::Const, O::None },
             { "LOADBOOL",  F::ABC,  O::Reg,  O::Imm,   O::None },
             { "LOADNIL",   F::ABC,  O::Reg,  O::None,  O::None },
-            { "GETGLOBAL", F::ABx,  O::Reg,  O::Const, O::None },
-            { "SETGLOBAL", F::ABx,  O::Reg,  O::Const, O::None },
+            { "GETGLOBAL", F::ABx,  O::Reg,  O::Global, O::None },
+            { "SETGLOBAL", F::ABx,  O::Reg,  O::Global, O::None },
             { "GETUPVAL",  F::ABC,  O::Reg,  O::Upval, O::None },
             { "SETUPVAL",  F::ABC,  O::Reg,  O::Upval, O::None },
             { "ADD",       F::ABC,  O::Reg,  O::Reg,   O::Reg  },
+            { "CONCAT",    F::ABC,  O::Reg,  O::Reg,   O::Reg  },
             { "SUB",       F::ABC,  O::Reg,  O::Reg,   O::Reg  },
             { "MUL",       F::ABC,  O::Reg,  O::Reg,   O::Reg  },
             { "DIV",       F::ABC,  O::Reg,  O::Reg,   O::Reg  },
