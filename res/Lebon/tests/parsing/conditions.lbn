@@ -1,0 +1,20 @@
+koz Parsing : malformed conditions finkoz
+
+koz error : no condition finkoz
+kan ouver afise("x") fèrm
+
+koz error : the block is missing finkoz
+kan vré afise("x")
+
+koz error : otreman without a kan finkoz
+otreman ouver afise("x") fèrm
+
+koz error : sinon-si without a kan finkoz
+sinon-si vré ouver afise("x") fèrm
+
+koz error : the comparison has no right side finkoz
+keksoz test idon 5 piti
+
+koz error : the else has no block finkoz
+kan vré ouver afise("x") fèrm otreman
+afise("y")

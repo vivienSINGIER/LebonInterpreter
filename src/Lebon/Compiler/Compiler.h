@@ -58,6 +58,7 @@ namespace Bytecode
         void Visit(VarDecl& _node) override;
         void Visit(ExprStmt& _node) override;
         void Visit(ReturnStmt& _node) override;
+        void Visit(IfStmt& _node) override;
         void Visit(Block& _node) override;
         void Visit(FuncDecl& _node) override;
         void Visit(Program& _node) override;
@@ -92,6 +93,7 @@ namespace Bytecode
         size_t Emit(Instruction _i, Node const& _at);
         uint16_t ConstantIndex(Value const& _v, Node const& _at);
         uint16_t GlobalSlot(Semantics::SymbolId _id, Node const& _at);
+        void PatchJumpHere(size_t _jump, Node const& _at);
 
         void Report(Node const& _at, std::string const& _message);
     };

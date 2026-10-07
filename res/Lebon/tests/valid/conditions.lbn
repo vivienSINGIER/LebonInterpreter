@@ -1,0 +1,65 @@
+koz Valid : conditions, comparisons and every keyword synonym finkoz
+
+keksoz age idon 20
+keksoz nom idon "Alice"
+
+koz a condition with an else, the else on its own line finkoz
+kan age plis-gran-egal 18
+ouver
+    afise("Majeur")
+fèrm
+otreman
+ouver
+    afise("Mineur")
+fèrm
+
+koz a chain of else if finkoz
+kan age piti 13 ouver afise("Enfant") fèrm
+sinon-si age piti 18 ouver afise("Ado") fèrm
+si-ankor age piti 65 ouver afise("Adulte") fèrm
+lot-si age égal 65 ouver afise("Retraite") fèrm
+sinon ouver afise("Senior") fèrm
+
+koz every word of every comparison finkoz
+kan age parey 20 ouver afise("parey") fèrm
+kan age égal 20 ouver afise("égal") fèrm
+kan age mem 20 ouver afise("mem") fèrm
+kan age leparay 20 ouver afise("leparay") fèrm
+kan age lomen 20 ouver afise("lomen") fèrm
+kan age diferan 21 ouver afise("diferan") fèrm
+kan age pa-égal 21 ouver afise("pa-égal") fèrm
+kan age pa-parey 21 ouver afise("pa-parey") fèrm
+kan age anba 30 ouver afise("anba") fèrm
+kan age piti 30 ouver afise("piti") fèrm
+kan age pli-piti 30 ouver afise("pli-piti") fèrm
+kan age dépas 10 ouver afise("dépas") fèrm
+kan age plis-gran 10 ouver afise("plis-gran") fèrm
+kan age pa-gran 20 ouver afise("pa-gran") fèrm
+kan age pli-piti-egal 20 ouver afise("pli-piti-egal") fèrm
+kan age pa-piti 20 ouver afise("pa-piti") fèrm
+kan age plis-gran-egal 20 ouver afise("plis-gran-egal") fèrm
+
+koz the three words that start a condition finkoz
+si vré ouver afise("si") fèrm
+si-sa vré ouver afise("si-sa") fèrm
+
+koz strings and booleans can be compared, a bool can be a condition finkoz
+kan nom parey "Alice" ouver afise("meme nom") fèrm
+kan vré ouver afise("toujours") fèrm
+keksoz majeur idon age pa-piti 18
+kan majeur ouver afise("majeur") fèrm
+
+koz conditions inside functions and inside conditions finkoz
+zafer signe(n)
+ouver
+    kan n piti 0
+    ouver
+        ran "negatif"
+    fèrm
+    kan n parey 0
+    ouver
+        ran "zero"
+    fèrm
+    ran "positif"
+fèrm
+afise(signe(5))

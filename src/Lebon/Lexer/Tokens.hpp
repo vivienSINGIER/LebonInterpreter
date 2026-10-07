@@ -23,8 +23,12 @@ enum class TokenType : int
     SCOPE_START, SCOPE_END, RETURN,
     COMMENT_START, COMMENT_END,
  
-    TRUE, FALSE, ADD, SUB, MUL, DIV, ASSIGN, 
-    
+    TRUE, FALSE, ADD, SUB, MUL, DIV, ASSIGN,
+
+    // CONDITIONS
+    IF, ELSE, ELSE_IF,
+    EQ, NEQ, LT, GT, LE, GE,
+
     END_OF_FILE
 };
 
@@ -95,6 +99,43 @@ static std::pair<std::string, TokenType> g_tokenKeywords[] = {
     { "ifé", TokenType::ASSIGN },
     { "lé", TokenType::ASSIGN },
     { "saidonn", TokenType::ASSIGN },
+
+    // Conditions. Les mots avec un trait d'union (pa-égal...) sont lus en un seul mot par le Lexer.
+    // "gran" n'est pas un opérateur : c'est un nom de variable courant dans les programmes de test
+    { "kan", TokenType::IF },
+    { "si", TokenType::IF },
+    { "si-sa", TokenType::IF },
+
+    { "sinon", TokenType::ELSE },
+    { "lot", TokenType::ELSE },
+    { "otreman", TokenType::ELSE },
+
+    { "sinon-si", TokenType::ELSE_IF },
+    { "si-ankor", TokenType::ELSE_IF },
+    { "lot-si", TokenType::ELSE_IF },
+
+    { "parey", TokenType::EQ },
+    { "égal", TokenType::EQ },
+    { "mem", TokenType::EQ },
+    { "leparay", TokenType::EQ },
+    { "lomen", TokenType::EQ },
+
+    { "pa-égal", TokenType::NEQ },
+    { "diferan", TokenType::NEQ },
+    { "pa-parey", TokenType::NEQ },
+
+    { "pli-piti", TokenType::LT },
+    { "piti", TokenType::LT },
+    { "anba", TokenType::LT },
+
+    { "dépas", TokenType::GT },
+    { "plis-gran", TokenType::GT },
+
+    { "pli-piti-egal", TokenType::LE },
+    { "pa-gran", TokenType::LE },
+
+    { "pa-piti", TokenType::GE },
+    { "plis-gran-egal", TokenType::GE },
 };
 
 static std::string g_tokenTypeNames[] = {
@@ -103,7 +144,9 @@ static std::string g_tokenTypeNames[] = {
     "Identifier", "Number", "String", "Comment", 
     "Variable", "Function", "ScopeStart", "ScopeEnd",
     "Return", "CommentStart", "CommentEnd", "true", "false",
-    "Add", "Sub", "Mul", "Div", "Assign", "End of File"
+    "Add", "Sub", "Mul", "Div", "Assign",
+    "If", "Else", "ElseIf", "Eq", "Neq", "Lt", "Gt", "Le", "Ge",
+    "End of File"
 };
 
 #endif

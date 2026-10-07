@@ -236,12 +236,26 @@ namespace Bytecode
     }
 
     // Opération binaire : choisit l'opcode, compile le côté gauche puis le droit dans deux registres, puis émet l'opération.
-    // L'addition est typée par l'analyseur : ADD pour les nombres, CONCAT pour les chaînes, la VM n'a rien à tester
+    // L'addition est typée par l'analyseur : ADD pour les nombres, CONCAT pour les chaînes, la VM n'a rien à tester.
+    // Les comparaisons laissent un bool dans le registre cible. != est un EQ suivi d'un NOT
     void Compiler::Visit(BinaryExpr& _node)
     {
         OpCode op = OpCode::Add;
+        bool negate = false;
         switch (_node.op)
         {
+        case TokenType::EQ:
+            op = OpCode::Eq; break;
+        case TokenType::NEQ:
+            op = OpCode::Eq; negate = true; break;
+        case TokenType::LT:
+            op = OpCode::Lt; break;
+        case TokenType::GT:
+            op = OpCode::Gt; break;
+        case TokenType::LE:
+            op = OpCode::Le; break;
+        case TokenType::GE:
+            op = OpCode::Ge; break;
         case TokenType::ADD:
             if (_node.type == Semantics::InferredType::Number)
                 op = OpCode::Add;
@@ -276,6 +290,8 @@ namespace Bytecode
         CompileTo(*_node.right, right);
 
         Emit(EncodeABC(op, dst, left, right), _node);
+        if (negate)
+            Emit(EncodeABC(OpCode::Not, dst, dst), _node);
 
         Func().freeReg = saved;
     }
@@ -425,6 +441,47 @@ namespace Bytecode
         Emit(EncodeABC(OpCode::Return, reg, 1), _node);
 
         Func().freeReg = saved;
+    }
+
+    // Fait pointer le saut déjà émis vers la prochaine instruction. Erreur si la distance ne tient pas dans l'instruction
+    void Compiler::PatchJumpHere(size_t _jump, Node const& _at)
+    {
+        size_t distance = Proto().Here() - _jump - 1;
+        if (distance > static_cast<size_t>(MaxSBx))
+        {
+            Report(_at, "this block is too long to be jumped over");
+            return;
+        }
+
+        Proto().PatchJump(_jump, Proto().Here());
+    }
+
+    // Condition : le test est calculé dans un temporaire libéré aussitôt. JMPIFNOT saute le bloc "alors" si le test est faux.
+    // Avec un sinon, le bloc "alors" se termine par un JMP qui saute le bloc "sinon", et JMPIFNOT arrive au début de celui-ci
+    void Compiler::Visit(IfStmt& _node)
+    {
+        FuncState& fn = Func();
+        size_t saved = fn.freeReg;
+
+        uint8_t test = AllocReg(_node);
+        CompileTo(*_node.condition, test);
+        size_t skipThen = Emit(EncodeAsBx(OpCode::JmpIfNot, test, 0), *_node.condition);
+        fn.freeReg = saved;
+
+        _node.thenBranch->Accept(*this);
+
+        if (_node.elseBranch)
+        {
+            size_t skipElse = Emit(EncodeAsBx(OpCode::Jmp, 0, 0), _node);
+            PatchJumpHere(skipThen, _node);
+
+            _node.elseBranch->Accept(*this);
+            PatchJumpHere(skipElse, _node);
+        }
+        else
+        {
+            PatchJumpHere(skipThen, _node);
+        }
     }
 
     // Ouvre une portée, compile les instructions, puis oublie les locales du bloc et libère leurs registres

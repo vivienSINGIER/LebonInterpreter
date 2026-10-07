@@ -151,6 +151,7 @@ NodePtr Parser::Statement()
 	if (Match({ TokenType::VAR_DECLARATION })) return VarDeclaration();
 	if (Match({ TokenType::FUNC_DECLARATION })) return FuncDeclaration();
 	if (Match({ TokenType::RETURN })) return ReturnStatement();
+	if (Match({ TokenType::IF })) return IfStatement();
 	if (Check(TokenType::SCOPE_START)) return BlockStatement();
 	return ExpressionStatement();
 }
@@ -238,6 +239,50 @@ NodePtr Parser::ReturnStatement()
 	return ret;
 }
 
+// Le mot IF (ou ELSE_IF pour une suite) vient d'être lu. Condition, bloc, puis éventuellement la suite :
+// sinon-si recommence un IfStmt, otreman est suivi d'un bloc (ou d'un autre kan)
+NodePtr Parser::IfStatement()
+{
+	auto stmt = MakeNode<IfStmt>(Previous());
+
+	stmt->condition = Expression();
+	if (!stmt->condition)
+		return nullptr;
+
+	SkipNewLines();
+	stmt->thenBranch = BlockStatement();
+	if (!stmt->thenBranch)
+		return nullptr;
+
+	// La suite peut commencer sur la ligne d'après. S'il n'y en a pas, on ne consomme rien
+	size_t afterBlock = current;
+	SkipNewLines();
+
+	if (Match({ TokenType::ELSE_IF }))
+	{
+		stmt->elseBranch = IfStatement();
+		if (!stmt->elseBranch)
+			return nullptr;
+	}
+	else if (Match({ TokenType::ELSE }))
+	{
+		SkipNewLines();
+		if (Match({ TokenType::IF }))
+			stmt->elseBranch = IfStatement();
+		else
+			stmt->elseBranch = BlockStatement();
+
+		if (!stmt->elseBranch)
+			return nullptr;
+	}
+	else
+	{
+		current = afterBlock;
+	}
+
+	return stmt;
+}
+
 std::unique_ptr<Block> Parser::BlockStatement()
 {
 	if (Consume(TokenType::SCOPE_START, "expected start of block") == false)
@@ -304,7 +349,49 @@ ExprPtr Parser::Assignment()
 
 		return assign;
 	}
-	return Additive();
+	return Equality();
+}
+
+ExprPtr Parser::Equality()
+{
+	ExprPtr left = Comparison();
+	while (left && Match({ TokenType::EQ, TokenType::NEQ }))
+	{
+		Token const& op = Previous();
+
+		auto bin = MakeNode<BinaryExpr>(op);
+
+		bin->op = op.type;
+		bin->left = std::move(left);
+		bin->right = Comparison();
+
+		if (!bin->right)
+			return nullptr;
+
+		left = std::move(bin);
+	}
+	return left;
+}
+
+ExprPtr Parser::Comparison()
+{
+	ExprPtr left = Additive();
+	while (left && Match({ TokenType::LT, TokenType::GT, TokenType::LE, TokenType::GE }))
+	{
+		Token const& op = Previous();
+
+		auto bin = MakeNode<BinaryExpr>(op);
+
+		bin->op = op.type;
+		bin->left = std::move(left);
+		bin->right = Additive();
+
+		if (!bin->right)
+			return nullptr;
+
+		left = std::move(bin);
+	}
+	return left;
 }
 
 ExprPtr Parser::Additive()

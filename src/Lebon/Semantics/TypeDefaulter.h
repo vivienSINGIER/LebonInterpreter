@@ -33,6 +33,7 @@ namespace Semantics
         void Visit(FuncDecl& _func) override;
         void Visit(CallExpr& _call) override;
         void Visit(ReturnStmt& _rtrn) override;
+        void Visit(IfStmt& _stmt) override;
         void Visit(UnaryExpr& _expr) override;
         void Visit(BinaryExpr& _expr) override;
 

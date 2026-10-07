@@ -55,6 +55,11 @@ void ReturnStmt::Accept(Visitor& _visitor)
 	_visitor.Visit(*this);
 }
 
+void IfStmt::Accept(Visitor& _visitor)
+{
+	_visitor.Visit(*this);
+}
+
 void Block::Accept(Visitor& _visitor)
 {
 	_visitor.Visit(*this);

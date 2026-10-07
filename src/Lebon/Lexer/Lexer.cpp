@@ -177,11 +177,44 @@ void Lexer::Number()
     AddToken(TokenType::NUMBER);
 }
 
+// Certains mots-clés s'écrivent avec des traits d'union (pa-égal, pli-piti-egal). Le trait d'union ne fait partie du mot
+// que si le mot complet est un mot-clé : "total-final" reste un identifiant suivi d'un '-' inconnu
+void Lexer::ExtendHyphenKeyword()
+{
+    size_t length = m_content.length();
+    size_t pos = m_current;
+    size_t best = 0;
+
+    while (pos + 1 < length && m_content[pos] == '-' && IsIdentifierStart(PeekAt(pos + 1)))
+    {
+        pos++;
+        while (pos < length)
+        {
+            size_t charLength;
+            if (IsIdentifierPart(DecodeAt(pos, charLength)) == false)
+                break;
+            pos += charLength;
+        }
+
+        std::string_view word(m_content.data() + m_start, pos - m_start);
+        for (auto const& keyword : g_tokenKeywords)
+        {
+            if (word == keyword.first)
+                best = pos;
+        }
+    }
+
+    while (best != 0 && m_current < best)
+        Advance();
+}
+
 void Lexer::Identifier()
 {
     while (IsIdentifierPart(Peek()))
         Advance();
-    
+
+    ExtendHyphenKeyword();
+
     std::string_view word(m_content.data() + m_start, m_current - m_start);
     
     for (auto const& token : g_tokenKeywords)

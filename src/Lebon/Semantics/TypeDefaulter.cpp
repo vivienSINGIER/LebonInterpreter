@@ -72,6 +72,14 @@ namespace Semantics
             _rtrn.value->Accept(*this);
     }
 
+    void TypeDefaulter::Visit(IfStmt& _stmt)
+    {
+        _stmt.condition->Accept(*this);
+        _stmt.thenBranch->Accept(*this);
+        if (_stmt.elseBranch)
+            _stmt.elseBranch->Accept(*this);
+    }
+
     void TypeDefaulter::Visit(UnaryExpr& _expr)
     {
         _expr.operand->Accept(*this);
