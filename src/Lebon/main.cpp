@@ -9,9 +9,14 @@
 #include "Parser/ASTPrinter.h"
 #include "Semantics/Analyser.h"
 #include "runtime/Runtime.h"
+#include "Compiler/Compiler.h"
+#include "Bytecode/Disassembler.h"
+#include "VM/VM.h"
 
 #include <chrono>
 #include <cstdio>
+#include <iostream>
+#include <streambuf>
 #include <string>
 #include <utility>
 #include <vector>
@@ -53,6 +58,66 @@ namespace
         std::vector<std::pair<char const*, double>> m_stages;
     };
 
+    // The VM prints on a std::ostream, this sends what it writes to the output sink of the run
+    class SinkBuf : public std::streambuf
+    {
+    public:
+        explicit SinkBuf(Runtime::OutputSink& _sink) : m_sink(_sink) {}
+
+    protected:
+        std::streamsize xsputn(char const* _text, std::streamsize _count) override
+        {
+            m_sink.Write(std::string_view(_text, static_cast<size_t>(_count)));
+            return _count;
+        }
+
+        int_type overflow(int_type _char) override
+        {
+            if (traits_type::eq_int_type(_char, traits_type::eof()) == false)
+            {
+                char const c = traits_type::to_char_type(_char);
+                m_sink.Write(std::string_view(&c, 1));
+            }
+            return traits_type::not_eof(_char);
+        }
+
+    private:
+        Runtime::OutputSink& m_sink;
+    };
+
+    // Compiles the analysed program to bytecode then runs it on the VM.
+    // The compilation and the execution are timed apart, like the other stages.
+    void RunVm(Driver::Options const& _options, Program& _program, Runtime::Context& _context, StageTimes& _times)
+    {
+        if (_options.trace)
+            Log::Log(LogType::Warning, "--trace isn't supported by the VM yet\n");
+
+        Bytecode::Heap heap;
+        Bytecode::Compiler compiler(heap);
+        Bytecode::CompiledProgram compiled;
+        _times.Measure("compile", [&] { compiled = compiler.Compile(_program); });
+
+        // The compiler logged why it failed
+        if (!compiled)
+            return;
+
+        if (_options.dumpBytecode)
+            Bytecode::Disassemble(*compiled.main, std::cout, compiled.globalNames);
+
+        SinkBuf buffer(*_context.out);
+        std::ostream out(&buffer);
+
+        Bytecode::VM vm(heap);
+        vm.SetOutput(out);
+
+        // The VM logs its own runtime errors
+        _times.Measure("run", [&] {
+            vm.Run(compiled);
+            out.flush();
+            _context.out->Flush();
+        });
+    }
+
     // Runs the analysed program with the back end chosen on the command line
     Error Execute(Driver::Options const& _options, Program& _program, Runtime::Context& _context)
     {
@@ -62,7 +127,7 @@ namespace
         switch (_options.mode)
         {
         case Driver::Mode::Tree: return Error::Execution("the tree-walking interpreter isn't implemented yet", 0, 0);
-        case Driver::Mode::Vm:   return Error::Execution("the virtual machine isn't implemented yet", 0, 0);
+		case Driver::Mode::Vm:   return Error::Ok(); // RunVm qui gère l'exécution du VM
         case Driver::Mode::Jit:  return Error::Execution("the JIT isn't implemented yet", 0, 0);
         }
         return Error::Ok();
@@ -115,10 +180,17 @@ namespace
             Runtime::Context context;
             context.out = _options.noOutput ? static_cast<Runtime::OutputSink*>(&null) : &console;
 
-            times.Measure("run", [&] {
-                ErrorManager::LogError(Execute(_options, *program, context));
-                context.out->Flush();
-            });
+            if (_options.mode == Driver::Mode::Vm)
+            {
+                RunVm(_options, *program, context, times);
+            }
+            else
+            {
+                times.Measure("run", [&] {
+                    ErrorManager::LogError(Execute(_options, *program, context));
+                    context.out->Flush();
+                });
+            }
         }
 
         if (_options.time)
