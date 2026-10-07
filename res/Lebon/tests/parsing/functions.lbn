@@ -1,0 +1,49 @@
+koz Parsing : function declarations finkoz
+
+zafer addition(a, b)
+ouver
+    ran a èk b
+fèrm
+
+koz error : expected function name finkoz
+zafer (a, b)
+ouver
+    ran a
+fèrm
+
+koz error : expected '(' after function name finkoz
+fonksyon salu
+ouver
+    afise("alo")
+fèrm
+
+koz error : expected parameter name, a number is not a name finkoz
+travay karé(5)
+ouver
+    ran 5 fwa 5
+fèrm
+
+koz error : expected parameter name, nothing follows the comma finkoz
+zafer mwayen(a, b,)
+ouver
+    ran (a èk b) koup 2
+fèrm
+
+koz error : expected ')' after parameters, the comma is missing finkoz
+zafer diferans(a b)
+ouver
+    ran a mwin b
+fèrm
+
+koz error : expected start of block, the body is not in a scope finkoz
+zafer triple(n) ran n fwa 3
+
+koz error : expected start of block, there is no body finkoz
+zafer vid()
+afise("pa de kor")
+
+koz error : expected end of block, the scope is never closed finkoz
+zafer dernié(n)
+ouver
+    keksoz rézilta idon n èk 1
+    ran rézilta

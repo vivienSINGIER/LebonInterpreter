@@ -1,0 +1,25 @@
+koz Lexing : characters that are not part of the language finkoz
+koz Operators, assignment and scopes are words in Lebon, the usual symbols are rejected finkoz
+
+keksoz pri idon 12.5
+keksoz kantité idon 3
+
+koz error : '=' is not the assign word finkoz
+keksoz total = pri fwa kantité
+
+koz error : '+', '-', '*' and '/' are not operators finkoz
+keksoz somme idon pri + kantité
+keksoz diferans idon pri - kantité
+keksoz produi idon pri * kantité
+keksoz par idon pri / kantité
+
+koz error : braces do not open a scope and ';' does not end a statement finkoz
+zafer double(x)
+{
+    ran x fwa 2;
+}
+
+koz error : '@', '#' and '!' mean nothing finkoz
+keksoz mail idon "lebon" @ 974
+afise(#total)
+afise(total!)

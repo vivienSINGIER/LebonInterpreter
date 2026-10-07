@@ -1,0 +1,52 @@
+koz Valid : declarations, assignments and every keyword synonym finkoz
+
+keksoz nom idon "Nathan"
+bazar age ifé 20
+keksoz pri saidonn 12.5
+keksoz majèr lé vré
+bazar minèr poufèr fo
+keksoz aktif idon pafo
+keksoz inaktif idon pavré
+
+koz declared now, assigned later finkoz
+keksoz total
+total idon 0
+
+koz the four ways to add finkoz
+total idon total èk 1
+total idon total amplis 2
+total idon total plist 3
+total idon total azout 4
+
+koz the three ways to subtract finkoz
+total idon total mwin 1
+total idon total rotir 2
+total idon total anlèv 3
+
+koz multiply and divide finkoz
+keksoz produi idon pri fwa 2
+produi idon produi miltipli 3
+keksoz par idon produi koup 2
+par idon par partaz 2
+par idon par kasan 2
+
+koz precedence, grouping and unary minus finkoz
+keksoz kalkil idon 1 èk 2 fwa 3
+kalkil idon (1 èk 2) fwa 3
+kalkil idon mwin kalkil
+kalkil idon mwin (age mwin 5) koup 2
+
+koz strings are joined with the add words finkoz
+keksoz fraz idon "Bonzour " èk nom
+fraz idon fraz azout " !"
+
+koz chained assignment finkoz
+keksoz x idon 0
+keksoz y idon 0
+x idon y idon 5
+
+afise(nom)
+afise(total)
+afise(fraz)
+afise(kalkil)
+afise(majèr)

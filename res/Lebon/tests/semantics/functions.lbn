@@ -1,0 +1,72 @@
+koz Semantics : functions and calls finkoz
+
+zafer addition(a, b)
+ouver
+    ran a èk b
+fèrm
+
+keksoz x idon 4
+keksoz y idon 2
+
+koz error : function declaration already exists finkoz
+zafer addition(a, b)
+ouver
+    ran a mwin b
+fèrm
+
+koz error : a function cannot take the name of a variable finkoz
+zafer x()
+ouver
+    ran 1
+fèrm
+
+koz error : duplicate parameter finkoz
+zafer karé(n, n)
+ouver
+    ran n fwa n
+fèrm
+
+koz error : a function cannot be called before it is declared finkoz
+afise(triple(x))
+zafer triple(n)
+ouver
+    ran n fwa 3
+fèrm
+
+koz error : the function does not exist finkoz
+afise(soustraksyon(x, y))
+
+koz error : incorrect argument count finkoz
+afise(addition(x))
+afise(addition(x, y, 1))
+afise()
+
+koz error : the expression is not callable finkoz
+keksoz rézilta idon x(1)
+keksoz otr idon 5(3)
+afise(addition(x, y)(1))
+
+koz error : function used as a value finkoz
+keksoz kopi idon addition
+afise(addition èk 1)
+
+koz error : cannot assign to a function or to a built-in finkoz
+addition idon 5
+afise idon 5
+
+koz error : a nested function is only visible inside its parent finkoz
+zafer parent(n)
+ouver
+    zafer zanfan(m)
+    ouver
+        ran m èk n
+    fèrm
+    ran zanfan(n)
+fèrm
+afise(zanfan(1))
+
+koz error : return outside of a function finkoz
+ran x
+ouver
+    ran y
+fèrm

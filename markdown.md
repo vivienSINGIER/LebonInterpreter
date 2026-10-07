@@ -131,17 +131,7 @@ afise result
 - chaîne : `"lebon"`
 - bool : `true` = `pa-fo`, `false` = `pa-vré`
 
-## 8. Sémantique
-
-### 8.1. Règles d'évaluation
-
-# TODO
-- Les expressions sont évaluées de gauche à droite selon la priorité des opérateurs.
-- Les variables sont stockées dans un environnement local.
-- Les blocs sont exécutés séquentiellement.
-- Une fonction reçoit des arguments et renvoie une valeur avec `return` = `ran`/`rovoy`/`donn`/`ala`.
-
-### 8.2. Portée des variables
+## 8. Portée des variables
 
 - Variables locales : visibles uniquement dans la fonction ou le bloc courant
 
@@ -185,24 +175,12 @@ Bienvenue Alice
 - ponctuations : `(`, `)`, `{` = `ouver`/`rant`/`lodebi`, `}` = `ferm`/`setou`/`sorti`/`laFin`, `,`, `=` = `idon`/`poufer`/`ifér`/`le`/`saidon`
 
 
-### 10.3 Tokens Comparaison
-
-
-## 11. Points d'attention
-
-# TODO
-- gérer les erreurs de syntaxe proprement
-- vérifier les types avant les opérations
-- définir les règles de priorité des opérateurs
-- gérer les blocs avec des `ouver` et `ferm`
-- traiter les cas de variables non déclarées
-
-## 12. Prochaine évolution possible
+## 11. Prochaine évolution possible
 
 - ajout d'un effet drunk
 - ajout de plus de type de variable
 
-## 13. Résumé
+## 12. Résumé
 
 Ce langage fait TOURNER LA TÊTE !
 

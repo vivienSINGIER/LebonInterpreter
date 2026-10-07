@@ -9,6 +9,8 @@
 
 #include "Logger.h"
 
+namespace fs = std::filesystem;
+
 struct Error
 {
     enum class ErrorCode : int
@@ -18,11 +20,14 @@ struct Error
         Syntax = 2,
         Semantics = 3,
         Execution = 4,
+        Io = 5
     };
 
     ErrorCode code = ErrorCode::Ok;
     std::string message;
     std::vector<std::string> details;
+    fs::path path;
+    uint32_t col = 0, line = 0;
     
     bool IsOk() const { return code == ErrorCode::Ok; }
     explicit operator bool() const { return !IsOk(); }
@@ -31,25 +36,28 @@ struct Error
     std::string Format() const;
 
     static Error Ok();
-    static Error Lexical(std::string _message);
-    static Error Syntax(std::string _message);
-    static Error Semantics(std::string _message);
-    static Error Execution(std::string _message);
+    static Error Lexical(std::string _message, uint32_t _line, uint32_t _col);
+    static Error Syntax(std::string _message, uint32_t _line, uint32_t _col);
+    static Error Semantics(std::string _message, uint32_t _line, uint32_t _col);
+    static Error Execution(std::string _message, uint32_t _line, uint32_t _col);
+    static Error Io(std::string _message, fs::path _path = "");
 };
 
 class ErrorManager
 {
-    static ErrorManager* singleton;
-    uint16_t numberOfErrors = 0;
+    inline static ErrorManager* m_instance = nullptr;
+    std::vector<Error> m_errors;
 
 public:
     static ErrorManager* GetErrorManager();
-    
-    void LogError(Error const& _error);
+    static void Clear();
 
-    uint16_t GetNumberOfErrors();
+    static void LogError(Error const& _error);
+    static int Code();
+
+    static std::vector<Error> const& Errors() { return GetErrorManager()->m_errors; }
+    static size_t Count() { return Errors().size(); }
+    static bool HasErrors() { return Count() > 0; }
 };
-
-
 
 #endif

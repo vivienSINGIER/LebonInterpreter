@@ -1,0 +1,22 @@
+koz Lexing : comment delimiters finkoz
+
+koz A comment
+can cover several lines,
+keksoz inside = "is ignored" finkoz
+
+keksoz konter idon 0
+konter idon konter èk 1 koz a comment can end a line finkoz
+
+koz error : a comment closer with no opener before it finkoz
+keksoz age idon 20 finkoz
+
+zafer plisin(n)
+ouver
+    ran n èk 1
+fèrm
+
+afise(plisin(konter))
+
+koz error : this comment is never closed, everything after it is swallowed
+keksoz oubliyé idon 1
+afise(oubliyé)

@@ -1,0 +1,67 @@
+koz Valid : functions, recursion, nested functions and scopes finkoz
+
+zafer addition(a, b)
+ouver
+    ran a èk b
+fèrm
+
+fonksyon karé(n) rant
+    rovoy n fwa n
+sorti
+
+travay salu(ki)
+lodebi
+    keksoz fraz idon "Bonzour " èk ki
+    donn fraz
+lafin
+
+koz no parameter, no returned value finkoz
+zafer prézant()
+ouver
+    afise("Lebon")
+    ran
+sétou
+
+koz a function can call itself finkoz
+zafer faktoryel(n)
+ouver
+    ala n fwa faktoryel(n mwin 1)
+fèrm
+
+koz a function can use the globals declared before it finkoz
+keksoz taks idon 1.2
+zafer avèktaks(pri)
+ouver
+    ran pri fwa taks
+fèrm
+
+koz a nested function can read the variables of its parent finkoz
+zafer fakti(pri, kantité)
+ouver
+    keksoz remiz idon 5
+    zafer net(montan)
+    ouver
+        ran montan mwin remiz
+    fèrm
+    keksoz brut idon pri fwa kantité
+    ran avèktaks(net(brut))
+fèrm
+
+koz a block has its own scope and still sees the outside finkoz
+ouver
+    keksoz konter idon "lokal"
+    afise(konter)
+    ouver
+        keksoz fon idon konter èk " an ba"
+        afise(fon)
+    fèrm
+fèrm
+
+koz calls as arguments and inside expressions finkoz
+keksoz somme idon addition(2, 3)
+keksoz gran idon karé(addition(1, 2)) èk faktoryel(4)
+afise(somme)
+afise(gran)
+afise(salu("Alice"))
+afise(fakti(10, 3))
+prézant()

@@ -1,0 +1,22 @@
+koz Lexing : a string must be closed on the line where it starts finkoz
+
+keksoz nom idon "Nathan"
+keksoz vil idon "Saint-Denis"
+
+koz error : the closing quote is missing finkoz
+keksoz salu idon "Bonzour tout domoun
+
+koz error : a string cannot continue on the next line,
+    the opening quote and the stray closing one are both reported finkoz
+keksoz fraz idon "premié ligne
+dézièm ligne"
+
+zafer prézant(ki)
+ouver
+    ran "Mi apèl " èk ki
+fèrm
+
+afise(prézant(nom))
+
+koz error : the string is still open at the end of the file finkoz
+afise("orevwar
