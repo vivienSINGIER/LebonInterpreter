@@ -25,6 +25,10 @@ sétou
 koz a function can call itself finkoz
 zafer faktoryel(n)
 ouver
+    kan n parey 1
+    ouver
+        ran n
+    fèrm  
     ala n fwa faktoryel(n mwin 1)
 fèrm
 

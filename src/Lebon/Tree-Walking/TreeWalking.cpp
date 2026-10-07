@@ -58,30 +58,38 @@ void TreeWalking::Visit(BinaryExpr& _b)
     auto rf = std::get_if<float>(&right);
     auto rs = std::get_if<std::string>(&right);
     auto ls = std::get_if<std::string>(&left);
-    
-    if ( _b.op == TokenType::ADD)
+
+    switch (_b.op)
     {
+    case TokenType::ADD:
         if (lf && rf) { m_result = *lf + *rf; return;}
         if (ls && rs) { m_result = *ls + *rs; return;}
         throw RuntimeError{"operands must be the same type", _b.row, _b.column };
+        break;
+    case TokenType::EQ:
+        m_result = left == right; return;
+    case TokenType::NEQ:
+        m_result = left != right; return;
+    default:
+        break;
     }
     
     if ( !lf && !rf) { throw RuntimeError{ "operands must be numbers", _b.row, _b.column }; }
     
     switch (_b.op)
     {
-    case TokenType::SUB:
-        if (lf && rf) { m_result = *lf - *rf; return;}
-        break;
-    case TokenType::MUL:
-        if (lf && rf) { m_result = *lf * *rf; return;}
-        break;
+    case TokenType::SUB: m_result = *lf - *rf; return;
+    case TokenType::MUL: m_result = *lf * *rf; return;
     case TokenType::DIV:
-        if ( *rf != 0) { m_result = *rf / *rf; return;}
+        if ( *rf != 0) { m_result = *lf / *rf; return;}
         throw RuntimeError{ "division by zero", _b.row, _b.column }; 
         break;
+    case TokenType::LT: m_result = *lf < *rf; return;
+    case TokenType::GT: m_result = *lf > *rf; return;
+    case TokenType::LE: m_result = *lf <= *rf; return;
+    case TokenType::GE: m_result = *lf >= *rf; return;
     default:
-        break;
+        throw RuntimeError{ "unknown binary operator", _b.row, _b.column };
     }
 }
 
@@ -133,8 +141,11 @@ void TreeWalking::Visit(CallExpr& _c)
     m_returning = false;                                  
 }
 
-void TreeWalking::Visit(VarDecl&)
+void TreeWalking::Visit(VarDecl& _v)
 {
+    Value v;
+    if ( _v.init ) v = Eval(*_v.init);
+    m_env->Define(_v.name, v);
 }
 
 void TreeWalking::Visit(ExprStmt& _e)
@@ -142,8 +153,10 @@ void TreeWalking::Visit(ExprStmt& _e)
     Eval(*_e.expr);
 }
 
-void TreeWalking::Visit(ReturnStmt&)
+void TreeWalking::Visit(ReturnStmt& _r)
 {
+    m_result = _r.value ? Eval(*_r.value) : Value{};
+    m_returning = true;
 }
 
 void TreeWalking::Visit(Block& _b)
@@ -160,8 +173,13 @@ void TreeWalking::Visit(Block& _b)
     m_env = previous;
 }
 
-void TreeWalking::Visit(FuncDecl&)
+void TreeWalking::Visit(FuncDecl& _f)
 {
+    auto fn = std::make_shared<Callable>();
+    fn->name = _f.name;
+    fn->decl = &_f;
+    fn->closure = m_env;
+    m_env->Define(_f.name, fn);
 }
 
 void TreeWalking::Visit(Program& _p)
@@ -171,6 +189,18 @@ void TreeWalking::Visit(Program& _p)
 
     for (auto& s : _p.statements)
         s->Accept(*this);
+}
+
+void TreeWalking::Visit(IfStmt& _i)
+{
+    Value cond = Eval(*_i.condition);
+    auto b = std::get_if<bool>(&cond);
+    if (!b)
+        throw RuntimeError{ "condition must be a boolean", _i.row, _i.column };
+    if (*b)
+        _i.thenBranch->Accept(*this);
+    else if (_i.elseBranch)
+        _i.elseBranch->Accept(*this);
 }
 
 void TreeWalking::DefineBuiltIns()

@@ -1,4 +1,13 @@
-afise("sàlut")
+zafer prézant()
+ouver
+    afise("Lebon")
+    keksoz fraz idon "Bonzour "
+    afise(fraz)
+    ran vré
+sétou
+
+
+afise(prézant())
 afise("a" èk "b")
 afise(1 èk 2)
 afise(vré)

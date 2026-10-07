@@ -11,6 +11,7 @@
 #include "Compiler/Compiler.h"
 #include "Bytecode/BytecodeTests.h"
 #include "Bytecode/Disassembler.h"
+#include "Tree-Walking/TreeWalking.h"
 #include "VM/VM.h"
 
 #include <algorithm>
@@ -66,49 +67,16 @@ namespace Test
             if (program && ErrorManager::HasErrors() == false)
             {
                 Semantics::Analyser analyser;
-                analyser.Run(*program);
+                if (analyser.Run(*program))
+                {
+                    RUNTIME::TreeWalking tree_walking;
+                    tree_walking.Run(*program);
+                }
 
-                // Affiché après l'analyse pour que les types et les ids de symboles soient remplis
                 if (_verbose)
                 {
                     AstPrinter printer;
                     printer.Print(*program);
-                }
-
-                if (ErrorManager::HasErrors() == false)
-                {
-                    Bytecode::Heap heap;
-                    Bytecode::Compiler compiler(heap);
-                    Bytecode::CompiledProgram compiled = compiler.Compile(*program);
-
-                    if (compiled)
-                    {
-                        // Les noms des globales servent à commenter GETGLOBAL / SETGLOBAL dans le listing
-                        std::ostringstream text;
-                        Bytecode::Disassemble(*compiled.main, text, compiled.globalNames);
-                        outcome.disassembly = text.str();
-
-                        if (compiled.FindGlobal("afise") == Bytecode::CompiledProgram::NoGlobal)
-                            outcome.globalsError = "the built-in 'afise' has no global slot";
-                        else if (GlobalSlotsInRange(*compiled.main, compiled.GlobalCount()) == false)
-                            outcome.globalsError = "an instruction uses a global slot outside of the table (" + std::to_string(compiled.GlobalCount()) + " globals)";
-
-                        if (_verbose)
-                            std::cout << outcome.disassembly;
-
-                        // La sortie d'afise est récupérée dans un flux : les tests la comparent, le mode verbeux l'affiche
-                        if (_run && outcome.globalsError.empty())
-                        {
-                            std::ostringstream captured;
-                            Bytecode::VM vm(heap);
-                            vm.SetOutput(captured);
-                            vm.Run(compiled);
-
-                            outcome.output = captured.str();
-                            if (_verbose)
-                                std::cout << "\n== run ==\n" << outcome.output;
-                        }
-                    }
                 }
             }
         }
@@ -122,7 +90,6 @@ namespace Test
         return outcome;
     }
 
-    // Pipeline complet sur un fichier, exécution comprise, renvoie seulement le code d'erreur
     inline Error::ErrorCode RunFile(fs::path const& _path, bool _verbose)
     {
         return RunPipeline(_path, _verbose, true).code;

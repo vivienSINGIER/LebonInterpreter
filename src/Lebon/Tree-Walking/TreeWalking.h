@@ -93,6 +93,7 @@ namespace RUNTIME
         void Visit(Block&)          override;
         void Visit(FuncDecl&)       override;
         void Visit(Program&)        override;
+        void Visit(IfStmt&)         override;
         
     };
 }
