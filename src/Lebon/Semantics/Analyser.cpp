@@ -1,5 +1,7 @@
 #include "Analyser.h"
 
+#include "TypeDefaulter.h"
+
 #include <vector>
 
 namespace
@@ -38,7 +40,11 @@ namespace Semantics
     {
         m_stack = &_program.stack;
         _program.Accept(*this);
-        
+
+        // Additions nothing constrained become numbers, before the types are written back
+        TypeDefaulter defaulter(m_types);
+        defaulter.Run(_program);
+
         for (Expr* e : m_exprs) e->type = m_types.Get(e->typeVar);
         for (SymbolInfo& s : m_stack->table.symbols)
         {
@@ -383,6 +389,21 @@ namespace Semantics
             Report(_rtrn, std::string("function returns both ") + TypeName(funcType) + " and " + TypeName(type));
     }
 
+    // La condition doit être un bool, chaque branche est un bloc avec sa propre portée
+    void Analyser::Visit(IfStmt& _stmt)
+    {
+        _stmt.condition->Accept(*this);
+
+        TypeVar var = ValueVar(*_stmt.condition);
+        InferredType type = m_types.Get(var);
+        if (m_types.Bind(var, InferredType::Bool) == false)
+            Report(*_stmt.condition, std::string("condition must be a bool, got ") + TypeName(type));
+
+        _stmt.thenBranch->Accept(*this);
+        if (_stmt.elseBranch)
+            _stmt.elseBranch->Accept(*this);
+    }
+
     void Analyser::Visit(UnaryExpr& _expr)
     {
         _expr.operand->Accept(*this);
@@ -401,6 +422,37 @@ namespace Semantics
         InferredType rType = ValueType(*_expr.right);
 
         bool poisoned = lType == InferredType::Error || rType == InferredType::Error;
+
+        // == et != comparent deux valeurs de même type, le résultat est un bool
+        if (_expr.op == TokenType::EQ || _expr.op == TokenType::NEQ)
+        {
+            if (poisoned)
+            {
+                SetVar(_expr, m_types.New(InferredType::Error));
+                return;
+            }
+
+            if (m_types.Unify(_expr.left->typeVar, _expr.right->typeVar) == false)
+            {
+                Report(_expr, std::string("can't compare ") + TypeName(lType) + " and " + TypeName(rType));
+                SetVar(_expr, m_types.New(InferredType::Error));
+                return;
+            }
+
+            SetVar(_expr, m_types.New(InferredType::Bool));
+            return;
+        }
+
+        // <, >, <= et >= n'ordonnent que des nombres, le résultat est un bool
+        if (_expr.op == TokenType::LT || _expr.op == TokenType::GT || _expr.op == TokenType::LE || _expr.op == TokenType::GE)
+        {
+            bool unordered = !m_types.Bind(_expr.left->typeVar, InferredType::Number) || !m_types.Bind(_expr.right->typeVar, InferredType::Number);
+            if (unordered && poisoned == false)
+                Report(_expr, std::string("can only order numbers, got ") + TypeName(lType) + " and " + TypeName(rType));
+
+            SetVar(_expr, m_types.New(InferredType::Bool));
+            return;
+        }
 
         if (_expr.op == TokenType::ADD)
         {

@@ -1,0 +1,28 @@
+koz Compile : conditions, comparisons and jumps finkoz
+
+keksoz age idon 20
+kan age plis-gran-egal 18
+ouver
+    afise("Majeur")
+fèrm
+otreman
+ouver
+    afise("Mineur")
+fèrm
+
+kan age parey 20 ouver afise("vingt") fèrm
+kan age diferan 20 ouver afise("pas vingt") fèrm
+
+kan age piti 13 ouver afise("Enfant") fèrm
+sinon-si age piti 18 ouver afise("Ado") fèrm
+sinon ouver afise("Adulte") fèrm
+
+ouver
+    keksoz local idon age mwin 1
+    kan local dépas 10
+    ouver
+        keksoz autre idon local
+        afise(autre)
+    fèrm
+    afise(local)
+fèrm

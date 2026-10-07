@@ -1,63 +1,35 @@
 ﻿#include "main.h"
 
-#include "core/FileHelper.h"
-#include "Lexer/Lexer.h"
-#include "Lexer/Tokens.hpp"
-#include "Parser/Parser.h"
-#include "Parser/AST.h"
-#include "Parser/ASTPrinter.h"
-#include "Semantics/Analyser.h"
-#include "Tree-Walking/TreeWalking.h"
+
+#include "core/Error.h"
+#include "Test/Test.hpp"
 
 #include <windows.h>
 
-namespace
-{
-    // Runs the lexer, the parser and the analyser on one file.
-    // A stage only runs if the previous ones logged no error.
-    // Returns the code of the first error, Ok if the file went through.
-    Error::ErrorCode RunFile(fs::path const& _path, bool _verbose)
-    {
-        Lexer lexer(_path);
-        lexer.Scan();
-        if (_verbose)
-            lexer.DisplayTokens();
-
-        if (ErrorManager::HasErrors() == false)
-        {
-            Parser parser(lexer.GetTokens());
-            std::unique_ptr<Program> program = parser.Parse();
-
-            if (program && ErrorManager::HasErrors() == false)
-            {
-                Semantics::Analyser analyser;
-                if (analyser.Run(*program))
-                {
-                    RUNTIME::TreeWalking treeWalking;
-                    treeWalking.Run(*program);
-                }
-                
-                if (_verbose)
-                {
-                    AstPrinter printer;
-                    printer.Print(*program);
-                }
-            }
-        }
-
-        Error::ErrorCode code = static_cast<Error::ErrorCode>(ErrorManager::Code());
-        ErrorManager::Clear();
-
-        return code;
-    }
-}
-
-int main()
+// Sans argument   : les tests, puis le programme de démo avec les tokens, l'AST et le bytecode
+// --tests         : les tests seulement
+// <fichier>       : ce fichier avec les tokens, l'AST et le bytecode
+int main(int argc, char** argv)
 {
     SetConsoleOutputCP(CP_UTF8);
 
-    // Second argument set to true also prints the tokens and the AST
-    Error::ErrorCode code = RunFile("../../res/Lebon/tests/TreeWalking/testTreeWalking.lbn", true);
+    std::string arg = argc > 1 ? argv[1] : "";
 
-    return code == Error::ErrorCode::Ok ? 0 : 1;
+    if (arg.empty() == false && arg != "--tests")
+        return Test::RunFile(fs::path(arg), true) == Error::ErrorCode::Ok ? 0 : 1;
+
+    int failures = Test::RunAllTests();
+    if (arg == "--tests")
+        return failures == 0 ? 0 : 1;
+
+    // Le second argument à true affiche aussi les tokens, l'AST et le bytecode
+    fs::path demo = "../../res/Lebon/tests/valid/program.lbn";
+    fs::path tests;
+    if (Test::FindTestsDir(tests).IsOk())
+        demo = tests / "valid" / "program.lbn";
+
+    Log::Log(LogType::PromptInfo, "\n[demo] valid/program.lbn\n");
+    Error::ErrorCode code = Test::RunFile(demo, true);
+
+    return failures == 0 && code == Error::ErrorCode::Ok ? 0 : 1;
 }

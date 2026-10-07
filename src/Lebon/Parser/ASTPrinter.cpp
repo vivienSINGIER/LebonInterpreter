@@ -10,6 +10,12 @@ static char const* OpSymbol(TokenType _op)
 	case TokenType::SUB: return "-";
 	case TokenType::MUL: return "*";
 	case TokenType::DIV: return "/";
+	case TokenType::EQ:  return "==";
+	case TokenType::NEQ: return "!=";
+	case TokenType::LT:  return "<";
+	case TokenType::GT:  return ">";
+	case TokenType::LE:  return "<=";
+	case TokenType::GE:  return ">=";
 	default: return "?";
 	}
 }
@@ -108,6 +114,18 @@ void AstPrinter::Visit(ReturnStmt& _node)
 	Line() << "Return\n";
 	if (_node.value)
 		Child(_node.value.get());
+}
+
+void AstPrinter::Visit(IfStmt& _node)
+{
+	Line() << "If\n";
+	Child(_node.condition.get());
+	Child(_node.thenBranch.get());
+	if (_node.elseBranch)
+	{
+		Line() << "Else\n";
+		Child(_node.elseBranch.get());
+	}
 }
 
 void AstPrinter::Visit(Block& _node)

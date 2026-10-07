@@ -26,7 +26,8 @@ namespace Semantics
     constexpr SymbolId InvalidSymbolId = UINT32_MAX;
     using TypeVar = uint32_t;
     constexpr TypeVar InvalidTypeVar = UINT32_MAX;
-    
+    constexpr uint32_t InvalidGlobalSlot = UINT32_MAX;
+
     struct TypeTable
     {
         std::vector<TypeVar> parents;
@@ -84,14 +85,18 @@ namespace Semantics
         
         bool isInitialized = false;
         bool isBuiltIn = false;
-        
+
+        // Index in the globals array of the VM, InvalidGlobalSlot if the symbol isn't a global
+        uint32_t globalSlot = InvalidGlobalSlot;
+
         std::vector<SymbolId> params;
     };
 
     struct SymbolTable
     {
         std::vector<SymbolInfo> symbols;
-        
+        uint32_t globalCount = 0;
+
         SymbolId Create(SymbolInfo _s)
         {
             symbols.push_back(std::move(_s));
@@ -99,6 +104,18 @@ namespace Semantics
         }
         
         SymbolInfo& Get(SymbolId _id) { return symbols[_id]; }
+
+        // Name of each global, indexed by slot
+        std::vector<std::string> GlobalNames() const
+        {
+            std::vector<std::string> names(globalCount);
+            for (SymbolInfo const& s : symbols)
+            {
+                if (s.globalSlot != InvalidGlobalSlot)
+                    names[s.globalSlot] = s.name;
+            }
+            return names;
+        }
     };
     
     struct Scope
@@ -129,6 +146,9 @@ namespace Semantics
         {
             if (scopes.empty())
                 return InvalidSymbolId;
+
+            if (scopes.back().type == ScopeType::Global)
+                _sInfo.globalSlot = table.globalCount++;
 
             SymbolId id = table.Create(std::move(_sInfo));
             scopes.back().symbols[_name] = id;

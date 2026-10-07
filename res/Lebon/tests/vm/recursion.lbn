@@ -1,0 +1,20 @@
+koz VM : recursion with a stop condition finkoz
+
+zafer faktoryel(n)
+ouver
+    kan n piti 2
+    ouver
+        ran 1
+    fèrm
+    ran n fwa faktoryel(n mwin 1)
+fèrm
+
+zafer fibo(n)
+ouver
+    kan n piti 2 ouver ran n fèrm
+    ran fibo(n mwin 1) èk fibo(n mwin 2)
+fèrm
+
+afise(faktoryel(5))
+afise(faktoryel(8))
+afise(fibo(10))

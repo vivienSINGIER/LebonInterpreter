@@ -1,0 +1,8 @@
+koz Runtime : an endless recursion must stop on a stack overflow, not crash finkoz
+
+zafer rekir(n)
+ouver
+    ran n fwa rekir(n mwin 1)
+fèrm
+
+afise(rekir(3))

@@ -1,0 +1,82 @@
+koz VM : conditions, comparisons and branches finkoz
+
+keksoz age idon 20
+
+kan age plis-gran-egal 18
+ouver
+    afise("Majeur")
+fèrm
+otreman
+ouver
+    afise("Mineur")
+fèrm
+
+kan age piti 18
+ouver
+    afise("Mineur encore")
+fèrm
+otreman
+ouver
+    afise("Pas mineur")
+fèrm
+
+koz the chain stops at the first true branch finkoz
+zafer categorie(n)
+ouver
+    kan n piti 13 ouver ran "Enfant" fèrm
+    sinon-si n piti 18 ouver ran "Ado" fèrm
+    sinon-si n piti 65 ouver ran "Adulte" fèrm
+    sinon ouver ran "Senior" fèrm
+fèrm
+afise(categorie(5))
+afise(categorie(15))
+afise(categorie(30))
+afise(categorie(70))
+
+koz each comparison on both sides of the boundary finkoz
+afise(3 piti 5)
+afise(5 piti 5)
+afise(5 pli-piti-egal 5)
+afise(6 pli-piti-egal 5)
+afise(6 dépas 5)
+afise(5 dépas 5)
+afise(5 plis-gran-egal 5)
+afise(4 plis-gran-egal 5)
+afise(5 parey 5)
+afise(5 parey 6)
+afise(5 diferan 6)
+afise(5 diferan 5)
+afise("a" parey "a")
+afise("a" parey "b")
+afise(vré parey fo)
+afise(vré diferan fo)
+
+koz arithmetic is computed before the comparison finkoz
+afise(1 èk 2 piti 5 mwin 1)
+afise(2 fwa 3 parey 6)
+afise(10 koup 2 dépas 4)
+
+koz the result of a comparison is a value finkoz
+keksoz majeur idon age plis-gran-egal 18
+afise(majeur)
+majeur idon age piti 18
+afise(majeur)
+
+koz conditions inside conditions finkoz
+kan age dépas 10
+ouver
+    kan age piti 30
+    ouver
+        afise("entre 10 et 30")
+    fèrm
+    otreman
+    ouver
+        afise("plus de 30")
+    fèrm
+fèrm
+
+koz a variable assigned in the branches finkoz
+keksoz resultat idon "?"
+kan age dépas 100 ouver resultat idon "centenaire" fèrm
+otreman ouver resultat idon "normal" fèrm
+afise(resultat)

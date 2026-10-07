@@ -23,6 +23,7 @@ public:
 	void Visit(VarDecl& _node) override;
 	void Visit(ExprStmt& _node) override;
 	void Visit(ReturnStmt& _node) override;
+	void Visit(IfStmt& _node) override;
 	void Visit(Block& _node) override;
 	void Visit(FuncDecl& _node) override;
 	void Visit(Program& _node) override;
