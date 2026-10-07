@@ -1,0 +1,23 @@
+koz Benchmark : conditions. 202 500 passes in a chain of three else if finkoz
+
+zafer categorie(n)
+ouver
+    kan n piti 13 ouver ran 1 fèrm
+    sinon-si n piti 18 ouver ran 2 fèrm
+    sinon-si n piti 65 ouver ran 3 fèrm
+    sinon ouver ran 4 fèrm
+fèrm
+
+zafer parcours(n, somme)
+ouver
+    kan n piti 1 ouver ran somme fèrm
+    ran parcours(n mwin 1, somme èk categorie(n))
+fèrm
+
+zafer repete(r, total)
+ouver
+    kan r piti 1 ouver ran total fèrm
+    ran repete(r mwin 1, total èk parcours(450, 0))
+fèrm
+
+afise(repete(450, 0))

@@ -1,0 +1,9 @@
+koz Benchmark : calls and returns. Two recursive calls per call, a condition and arithmetic finkoz
+
+zafer fibo(n)
+ouver
+    kan n piti 2 ouver ran n fèrm
+    ran fibo(n mwin 1) èk fibo(n mwin 2)
+fèrm
+
+afise(fibo(24))

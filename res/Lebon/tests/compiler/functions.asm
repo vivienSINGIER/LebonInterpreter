@@ -32,12 +32,10 @@
 0030  L34  CALL      R0 0
 0031  L34  RETURN    R0 0
 
-== function addition (params=2, registers=4) ==
-0000  L5   MOVE      R2 R0
-0001  L5   MOVE      R3 R1
-0002  L5   ADD       R2 R2 R3
-0003  L5   RETURN    R2 1
-0004  L5   RETURN    R0 0
+== function addition (params=2, registers=3) ==
+0000  L5   ADD       R2 R0 R1
+0001  L5   RETURN    R2 1
+0002  L5   RETURN    R0 0
 
 == function prézant (params=0, registers=2) ==
 0000  L10  GETGLOBAL R0 G0  ; afise
@@ -46,16 +44,13 @@
 0003  L11  RETURN    R0 0
 0004  L11  RETURN    R0 0
 
-== function faktoryel (params=1, registers=5) ==
-0000  L16  MOVE      R1 R0
-0001  L16  GETGLOBAL R2 G3  ; faktoryel
-0002  L16  MOVE      R3 R0
-0003  L16  LOADK     R4 K0  ; 1
-0004  L16  SUB       R3 R3 R4
-0005  L16  CALL      R2 1
-0006  L16  MUL       R1 R1 R2
-0007  L16  RETURN    R1 1
-0008  L16  RETURN    R0 0
+== function faktoryel (params=1, registers=3) ==
+0000  L16  GETGLOBAL R1 G3  ; faktoryel
+0001  L16  SUBK      R2 R0 K0  ; 1
+0002  L16  CALL      R1 1
+0003  L16  MUL       R1 R0 R1
+0004  L16  RETURN    R1 1
+0005  L16  RETURN    R0 0
 
 == function compteur (params=1, registers=5) ==
 0000  L21  MOVE      R1 R0
@@ -66,11 +61,10 @@
 0005  L27  RETURN    R3 1
 0006  L27  RETURN    R0 0
 
-== function ajoute (params=1, registers=3) ==
+== function ajoute (params=1, registers=2) ==
 0000  L24  GETUPVAL  R1 U0
-0001  L24  MOVE      R2 R0
-0002  L24  ADD       R1 R1 R2
-0003  L24  SETUPVAL  R1 U0
-0004  L25  GETUPVAL  R1 U0
-0005  L25  RETURN    R1 1
-0006  L25  RETURN    R0 0
+0001  L24  ADD       R1 R1 R0
+0002  L24  SETUPVAL  R1 U0
+0003  L25  GETUPVAL  R1 U0
+0004  L25  RETURN    R1 1
+0005  L25  RETURN    R0 0

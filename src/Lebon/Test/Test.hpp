@@ -271,14 +271,14 @@ namespace Test
         }
     }
 
-    // Chaque programme est exécuté sans erreur et doit écrire exactement ce qu'il y a dans le fichier .out placé à côté
-    inline void TestVm(fs::path const& _root, TestStats& _stats)
+    // Chaque programme du dossier est exécuté sans erreur et doit écrire exactement ce qu'il y a dans le fichier .out placé à côté
+    inline void TestOutputs(fs::path const& _dir, std::string const& _label, TestStats& _stats)
     {
-        Log::Log(LogType::PromptInfo, "[vm] program output\n");
+        Log::Log(LogType::PromptInfo, "[" + _label + "] program output\n");
 
-        for (fs::path const& file : LbnFilesIn(_root / "vm"))
+        for (fs::path const& file : LbnFilesIn(_dir))
         {
-            std::string name = "vm/" + file.filename().string();
+            std::string name = _label + "/" + file.filename().string();
 
             Outcome outcome;
             {
@@ -337,6 +337,7 @@ namespace Test
             bool allFilled = true;
             for (char const* folder : { "valid", "lexing", "parsing", "semantics", "compiler", "vm", "runtime" })
                 allFilled = allFilled && LbnFilesIn(tests / folder).empty() == false;
+            allFilled = allFilled && LbnFilesIn(tests.parent_path() / "benchmarks").empty() == false;
             stats.Report("every test folder has files", allFilled);
 
             TestFolder(tests, "valid",     Error::ErrorCode::Ok,        stats);
@@ -344,8 +345,12 @@ namespace Test
             TestFolder(tests, "parsing",   Error::ErrorCode::Syntax,    stats);
             TestFolder(tests, "semantics", Error::ErrorCode::Semantics, stats);
             TestCompiler(tests, stats);
-            TestVm(tests, stats);
+            TestOutputs(tests / "vm", "vm", stats);
             TestFolder(tests, "runtime",   Error::ErrorCode::Execution, stats, true);
+
+            // Les benchmarks sont aussi des programmes dont le résultat doit rester juste après une optimisation.
+            // Ici une seule exécution sans mesure, les mesures sont dans --bench
+            TestOutputs(tests.parent_path() / "benchmarks", "benchmarks", stats);
         }
 
         std::string summary = std::to_string(stats.passed) + " passed, " + std::to_string(stats.failed) + " failed\n";

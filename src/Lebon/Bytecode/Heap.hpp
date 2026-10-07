@@ -38,6 +38,9 @@ namespace Bytecode
 
         size_t StringCount() const { return m_strings.size(); }
 
+        // Objets créés par New (fermetures, upvalues, natifs), sans les chaînes. Il n'y a pas de GC : ce nombre ne fait que croître
+        size_t ObjectCount() const { return m_objects.size(); }
+
     private:
         std::unordered_map<std::string, std::unique_ptr<StringObj>> m_strings;
         std::vector<std::unique_ptr<Obj>> m_objects;

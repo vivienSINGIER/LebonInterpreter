@@ -1,0 +1,14 @@
+koz Benchmark : arithmetic. A tree of 16 384 leaves, each one computes a long expression of its parameter finkoz
+
+zafer feuille(x)
+ouver
+    ran (x fwa x èk x mwin 1) fwa 3 koup (x èk 2) mwin x fwa 2 èk 7
+fèrm
+
+zafer arbre(n, x)
+ouver
+    kan n piti 1 ouver ran feuille(x) fèrm
+    ran arbre(n mwin 1, x) èk arbre(n mwin 1, x èk 1)
+fèrm
+
+afise(arbre(14, 1))

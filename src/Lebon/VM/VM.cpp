@@ -10,9 +10,9 @@ namespace Bytecode
         // pour attraper un bytecode écrit à la main ou un bug du compilateur
 #ifndef NDEBUG
         #define CHECK_NUMBERS(_l, _r) \
-            if ((_l).IsNumber() == false || (_r).IsNumber() == false) { frame->ip = ip; return RuntimeError("operands must be numbers"); }
+            if ((_l).IsNumber() == false || (_r).IsNumber() == false) { SAVE_FRAME(); return RuntimeError("operands must be numbers"); }
         #define CHECK_STRINGS(_l, _r) \
-            if ((_l).IsString() == false || (_r).IsString() == false) { frame->ip = ip; return RuntimeError("operands must be strings"); }
+            if ((_l).IsString() == false || (_r).IsString() == false) { SAVE_FRAME(); return RuntimeError("operands must be strings"); }
 #else
         #define CHECK_NUMBERS(_l, _r)
         #define CHECK_STRINGS(_l, _r)
@@ -60,7 +60,7 @@ namespace Bytecode
         : m_heap(_heap)
         , m_stack(StackSize)
     {
-        m_frames.reserve(MaxFrames);
+        m_frames.resize(MaxFrames);
     }
 
     // Installe un natif dans la case de la globale du même nom, ignoré si le programme ne la connaît pas
@@ -83,7 +83,6 @@ namespace Bytecode
             return false;
         }
 
-        m_frames.clear();
         m_openUpvalues = nullptr;
         m_globals.assign(_program.GlobalCount(), Value());
         DefineNative(_program, "afise", 1, &Afise);
@@ -91,40 +90,35 @@ namespace Bytecode
         FunctionObj* main = m_heap.New<FunctionObj>(_program.main.get());
         m_stack[0] = Value::MakeObj(ValueType::Function, main);
 
-        bool ok = PushFrame(main, &m_stack[1]) && Execute();
+        m_executed = 0;
+        m_opCounts.fill(0);
+
+        // La frame de main est la première du tableau, ses registres commencent juste après la case de la fonction.
+        // Pas de test de dépassement ici : main n'a pas plus de MaxRegisters registres, la pile est bien plus grande
+        CallFrame& first = m_frames[0];
+        first.closure = main;
+        first.ip = main->proto->code.data();
+        first.base = &m_stack[1];
+        first.constants = main->proto->constants.data();
+        m_top = &first;
+
+        bool ok = m_statsEnabled ? Execute<true>() : Execute<false>();
         if (ok == false)
-        {
             CloseUpvalues(m_stack.data());
-            m_frames.clear();
-        }
+
+        m_top = nullptr;
         return ok;
     }
 
-    // Empile une frame : refuse si la profondeur d'appel ou la pile dépasse sa limite
-    bool VM::PushFrame(FunctionObj* _closure, Value* _base)
-    {
-        Value* stackEnd = m_stack.data() + m_stack.size();
-
-        if (m_frames.size() >= MaxFrames || _base + _closure->proto->maxRegisters > stackEnd)
-            return RuntimeError("stack overflow, too many nested calls");
-
-        CallFrame frame;
-        frame.closure = _closure;
-        frame.ip = _closure->proto->code.data();
-        frame.base = _base;
-        m_frames.push_back(frame);
-        return true;
-    }
-
     // Logge une erreur d'exécution avec la fonction et la ligne source de l'instruction en cours, renvoie toujours false.
-    // L'ip de la frame courante doit être à jour
+    // m_top et l'ip de la frame courante doivent être à jour (SAVE_FRAME)
     bool VM::RuntimeError(std::string const& _message)
     {
         std::string text = _message;
 
-        if (m_frames.empty() == false)
+        if (m_top != nullptr)
         {
-            CallFrame const& frame = m_frames.back();
+            CallFrame const& frame = *m_top;
             Prototype const& proto = *frame.closure->proto;
 
             size_t index = static_cast<size_t>(frame.ip - proto.code.data());
@@ -185,25 +179,41 @@ namespace Bytecode
 
     // Boucle principale : lit une instruction, l'exécute, recommence jusqu'au RETURN de main.
     // ip, base et les constantes de la fonction courante sont gardés dans des variables locales,
-    // et rechargés quand on change de frame (appel ou retour)
+    // et rechargés quand on change de frame (appel ou retour). Les frames sont dans un tableau fixe : appeler
+    // ou revenir déplace seulement le pointeur "frame", sans allocation ni test de capacité
+    template <bool CountInstructions>
     bool VM::Execute()
     {
-        CallFrame* frame = nullptr;
+        CallFrame* const frameBase = m_frames.data();
+        CallFrame* const frameEnd = frameBase + MaxFrames;
+        Value* const stackEnd = m_stack.data() + m_stack.size();
+
+        CallFrame* frame = m_top;
         Instruction const* ip = nullptr;
         Value* base = nullptr;
         Value const* k = nullptr;
 
 #define LOAD_FRAME() \
-        frame = &m_frames.back(); \
         ip = frame->ip; \
         base = frame->base; \
-        k = frame->closure->proto->constants.data()
+        k = frame->constants
+
+        // Avant de signaler une erreur : la frame courante et son ip doivent être lisibles par RuntimeError
+#define SAVE_FRAME() \
+        frame->ip = ip; \
+        m_top = frame
 
         LOAD_FRAME();
 
         for (;;)
         {
             Instruction i = *ip++;
+
+            if constexpr (CountInstructions)
+            {
+                m_executed++;
+                m_opCounts[static_cast<size_t>(GetOp(i)) % m_opCounts.size()]++;
+            }
 
             switch (GetOp(i))
             {
@@ -337,6 +347,92 @@ namespace Bytecode
                 break;
             }
 
+            // Opérations dont le second opérande est une constante du pool de la fonction : k[C]
+            case OpCode::AddK:
+            {
+                Value const& left = base[GetB(i)];
+                Value const& right = k[GetC(i)];
+                CHECK_NUMBERS(left, right)
+                base[GetA(i)] = MakeNumber(left.n + right.n);
+                break;
+            }
+
+            case OpCode::ConcatK:
+            {
+                Value const& left = base[GetB(i)];
+                Value const& right = k[GetC(i)];
+                CHECK_STRINGS(left, right)
+                base[GetA(i)] = Value::MakeString(m_heap.Intern(left.AsString()->chars + right.AsString()->chars));
+                break;
+            }
+
+            case OpCode::SubK:
+            {
+                Value const& left = base[GetB(i)];
+                Value const& right = k[GetC(i)];
+                CHECK_NUMBERS(left, right)
+                base[GetA(i)] = MakeNumber(left.n - right.n);
+                break;
+            }
+
+            case OpCode::MulK:
+            {
+                Value const& left = base[GetB(i)];
+                Value const& right = k[GetC(i)];
+                CHECK_NUMBERS(left, right)
+                base[GetA(i)] = MakeNumber(left.n * right.n);
+                break;
+            }
+
+            case OpCode::DivK:
+            {
+                Value const& left = base[GetB(i)];
+                Value const& right = k[GetC(i)];
+                CHECK_NUMBERS(left, right)
+                base[GetA(i)] = MakeNumber(left.n / right.n);
+                break;
+            }
+
+            case OpCode::EqK:
+                base[GetA(i)] = MakeBool(base[GetB(i)] == k[GetC(i)]);
+                break;
+
+            case OpCode::LtK:
+            {
+                Value const& left = base[GetB(i)];
+                Value const& right = k[GetC(i)];
+                CHECK_NUMBERS(left, right)
+                base[GetA(i)] = MakeBool(left.n < right.n);
+                break;
+            }
+
+            case OpCode::LeK:
+            {
+                Value const& left = base[GetB(i)];
+                Value const& right = k[GetC(i)];
+                CHECK_NUMBERS(left, right)
+                base[GetA(i)] = MakeBool(left.n <= right.n);
+                break;
+            }
+
+            case OpCode::GtK:
+            {
+                Value const& left = base[GetB(i)];
+                Value const& right = k[GetC(i)];
+                CHECK_NUMBERS(left, right)
+                base[GetA(i)] = MakeBool(left.n > right.n);
+                break;
+            }
+
+            case OpCode::GeK:
+            {
+                Value const& left = base[GetB(i)];
+                Value const& right = k[GetC(i)];
+                CHECK_NUMBERS(left, right)
+                base[GetA(i)] = MakeBool(left.n >= right.n);
+                break;
+            }
+
             case OpCode::Jmp:
                 ip += GetSBx(i);
                 break;
@@ -351,50 +447,75 @@ namespace Bytecode
                 // La fonction est dans R[A], ses arguments dans R[A+1] .. R[A+B]. Le résultat remplacera la fonction
                 Value* slot = base + GetA(i);
                 int argCount = GetB(i);
-                Value callee = *slot;
 
-                frame->ip = ip;
-
-                if (callee.type == ValueType::Function)
+                if (slot->type == ValueType::Function)
                 {
-                    FunctionObj* function = static_cast<FunctionObj*>(callee.o);
-                    if (argCount != function->proto->numParams)
-                        return RuntimeError("function expects " + std::to_string(function->proto->numParams) + " argument(s), got " + std::to_string(argCount));
+                    // Chemin des fonctions du programme : tout ce qu'il faut sur la fonction est lu une seule fois
+                    FunctionObj* function = static_cast<FunctionObj*>(slot->o);
+                    Prototype const* proto = function->proto;
 
                     // Les arguments sont déjà aux bons registres : la nouvelle frame commence juste après la fonction
-                    if (PushFrame(function, slot + 1) == false)
-                        return false;
+                    Value* newBase = slot + 1;
+                    CallFrame* next = frame + 1;
+
+                    if (argCount != proto->numParams)
+                    {
+                        SAVE_FRAME();
+                        return RuntimeError("function expects " + std::to_string(proto->numParams) + " argument(s), got " + std::to_string(argCount));
+                    }
+
+                    if (next == frameEnd || newBase + proto->maxRegisters > stackEnd)
+                    {
+                        SAVE_FRAME();
+                        return RuntimeError("stack overflow, too many nested calls");
+                    }
+
+                    frame->ip = ip;     // où l'appelant reprendra
+
+                    next->closure = function;
+                    next->base = newBase;
+                    next->constants = proto->constants.data();
+                    next->ip = proto->code.data();
+
+                    frame = next;
                     LOAD_FRAME();
                 }
-                else if (callee.type == ValueType::Native)
+                else if (slot->type == ValueType::Native)
                 {
-                    NativeObj* native = static_cast<NativeObj*>(callee.o);
+                    NativeObj* native = static_cast<NativeObj*>(slot->o);
                     if (argCount != native->arity)
+                    {
+                        SAVE_FRAME();
                         return RuntimeError("'" + native->name + "' expects " + std::to_string(native->arity) + " argument(s), got " + std::to_string(argCount));
+                    }
 
                     *slot = native->fn(*this, slot + 1, argCount);
                 }
                 else
                 {
-                    return RuntimeError(std::string("attempt to call a ") + TypeName(callee.type));
+                    SAVE_FRAME();
+                    return RuntimeError(std::string("attempt to call a ") + TypeName(slot->type));
                 }
                 break;
             }
 
             case OpCode::Return:
             {
-                Value result = GetB(i) != 0 ? base[GetA(i)] : Value();
+                // Le résultat prend la place de la fonction appelée, juste avant le premier registre de la frame
+                if (GetB(i) != 0)
+                    base[-1] = base[GetA(i)];
+                else
+                    base[-1] = Value();
 
-                // Les variables capturées par des fermetures survivent à la frame : on les copie hors de la pile
-                CloseUpvalues(base);
+                // Les variables capturées par des fermetures survivent à la frame : on les copie hors de la pile.
+                // Presque toujours il n'y en a aucune d'ouverte dans cette frame, on évite alors l'appel
+                if (m_openUpvalues != nullptr && m_openUpvalues->location >= base)
+                    CloseUpvalues(base);
 
-                Value* resultSlot = base - 1;
-                m_frames.pop_back();
-                *resultSlot = result;
-
-                if (m_frames.empty())
+                if (frame == frameBase)
                     return true;
 
+                frame--;
                 LOAD_FRAME();
                 break;
             }
@@ -420,11 +541,12 @@ namespace Bytecode
 
             case OpCode::Count:
             default:
-                frame->ip = ip;
+                SAVE_FRAME();
                 return RuntimeError("invalid instruction");
             }
         }
 
+#undef SAVE_FRAME
 #undef LOAD_FRAME
     }
 }
