@@ -459,7 +459,6 @@ namespace Bytecode
         FuncState& fn = Func();
         fn.proto = proto.get();
 
-        // The parameters are the first locals, one register each
         for (Param const& param : _node.params)
         {
             uint8_t reg = AllocReg(_node);
@@ -489,7 +488,6 @@ namespace Bytecode
 
         uint8_t reg = AllocReg(_node);
 
-        // A local function is visible in its own body, so recursion captures it as an upvalue
         if (global == false)
         {
             fn.locals.push_back({ _node.name, reg });

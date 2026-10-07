@@ -82,6 +82,7 @@ namespace Bytecode
         void CompileAssign(AssignExpr& _node, bool _wantValue);
 
         LocalVar* FindLocal(FuncState& _fn, std::string const& _name);
+
         // Index de l'upvalue de la fonction _level, -1 si le nom n'est pas une variable d'une fonction parente
         int ResolveUpvalue(size_t _level, std::string const& _name, Node const& _at);
 
@@ -90,7 +91,6 @@ namespace Bytecode
 
         size_t Emit(Instruction _i, Node const& _at);
         uint16_t ConstantIndex(Value const& _v, Node const& _at);
-        // Slot de la globale designee par le symbole, attribue par l'analyseur
         uint16_t GlobalSlot(Semantics::SymbolId _id, Node const& _at);
 
         void Report(Node const& _at, std::string const& _message);

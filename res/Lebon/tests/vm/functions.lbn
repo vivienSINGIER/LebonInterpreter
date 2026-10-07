@@ -1,0 +1,31 @@
+koz VM : parameters, return values, nested calls and globals finkoz
+
+zafer addition(a, b)
+ouver
+    ran a èk b
+fèrm
+
+zafer soustrait(a, b)
+ouver
+    ran a mwin b
+fèrm
+
+zafer salu(ki)
+ouver
+    ran "Bonzour " èk ki
+fèrm
+
+keksoz konte idon 0
+
+zafer ajoute()
+ouver
+    konte idon konte èk 1
+sétou
+
+afise(addition(2, 3))
+afise(soustrait(10, 3))
+afise(addition(1, addition(2, 3)))
+afise(salu("Alice"))
+ajoute()
+ajoute()
+afise(konte)

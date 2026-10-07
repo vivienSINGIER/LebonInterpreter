@@ -11,6 +11,7 @@
 #include "Compiler/Compiler.h"
 #include "Bytecode/BytecodeTests.h"
 #include "Bytecode/Disassembler.h"
+#include "VM/VM.h"
 
 #include <algorithm>
 #include <iostream>
@@ -24,6 +25,7 @@ namespace Test
         std::string firstError;      // la première erreur loggée, vide s'il n'y en a pas
         std::string disassembly;     // rempli seulement si le fichier a été compilé
         std::string globalsError;    // problème dans la table des globales du résultat de compilation, vide si tout va bien
+        std::string output;          // ce qu'afise a écrit, rempli seulement si le programme a été exécuté
     };
 
     // Chaque GETGLOBAL / SETGLOBAL de la fonction et de ses fonctions internes doit viser un slot de la table
@@ -44,10 +46,10 @@ namespace Test
         return true;
     }
 
-    // Lance le lexer, le parser, l'analyseur et le compilateur sur un fichier.
+    // Lance le lexer, le parser, l'analyseur et le compilateur sur un fichier, puis la VM si _run est vrai.
     // Une étape ne tourne que si les précédentes n'ont loggé aucune erreur.
     // Renvoie le code de la première erreur, Ok si le fichier est passé partout.
-    inline Outcome RunPipeline(fs::path const& _path, bool _verbose)
+    inline Outcome RunPipeline(fs::path const& _path, bool _verbose, bool _run = false)
     {
         Outcome outcome;
 
@@ -93,6 +95,19 @@ namespace Test
 
                         if (_verbose)
                             std::cout << outcome.disassembly;
+
+                        // La sortie d'afise est récupérée dans un flux : les tests la comparent, le mode verbeux l'affiche
+                        if (_run && outcome.globalsError.empty())
+                        {
+                            std::ostringstream captured;
+                            Bytecode::VM vm(heap);
+                            vm.SetOutput(captured);
+                            vm.Run(compiled);
+
+                            outcome.output = captured.str();
+                            if (_verbose)
+                                std::cout << "\n== run ==\n" << outcome.output;
+                        }
                     }
                 }
             }
@@ -107,10 +122,10 @@ namespace Test
         return outcome;
     }
 
-    // Pipeline complet sur un fichier, renvoie seulement le code d'erreur
+    // Pipeline complet sur un fichier, exécution comprise, renvoie seulement le code d'erreur
     inline Error::ErrorCode RunFile(fs::path const& _path, bool _verbose)
     {
-        return RunPipeline(_path, _verbose).code;
+        return RunPipeline(_path, _verbose, true).code;
     }
 
     // Les fichiers de test loggent des erreurs exprès : tant que l'objet vit, cout et cerr sont redirigés vers un tampon
@@ -194,27 +209,28 @@ namespace Test
         return files;
     }
 
-    // Chaque fichier du dossier doit s'arrêter sur le type d'erreur attendu (Ok pour les fichiers valides)
-    inline void TestFolder(fs::path const& _root, char const* _folder, Error::ErrorCode _expected, TestStats& _stats)
+    // Chaque fichier du dossier doit s'arrêter sur le type d'erreur attendu (Ok pour les fichiers valides).
+    // Un fichier compilé doit aussi avoir une table de globales cohérente (ce qui ne concerne que les fichiers valides).
+    // _run : les fichiers sont aussi exécutés, pour les erreurs qui n'arrivent qu'à l'exécution
+    inline void TestFolder(fs::path const& _root, char const* _folder, Error::ErrorCode _expected, TestStats& _stats, bool _run = false)
     {
         Log::Log(LogType::PromptInfo, std::string("[") + _folder + "] expects " + CodeName(_expected) + "\n");
 
-        std::vector<fs::path> files = LbnFilesIn(_root / _folder);
-        _stats.Report(std::string(_folder) + " folder is not empty", files.empty() == false);
-
-        for (fs::path const& file : files)
+        for (fs::path const& file : LbnFilesIn(_root / _folder))
         {
             Outcome outcome;
             {
                 Silencer silence;
-                outcome = RunPipeline(file, false);
+                outcome = RunPipeline(file, false, _run);
             }
 
             std::string detail;
             if (outcome.code != _expected)
                 detail = std::string("    expected ") + CodeName(_expected) + ", got " + CodeName(outcome.code) + (outcome.firstError.empty() ? "" : " : " + outcome.firstError);
+            else if (outcome.globalsError.empty() == false)
+                detail = "    " + outcome.globalsError;
 
-            _stats.Report(std::string(_folder) + "/" + file.filename().string(), outcome.code == _expected, detail);
+            _stats.Report(std::string(_folder) + "/" + file.filename().string(), detail.empty(), detail);
         }
     }
 
@@ -223,10 +239,7 @@ namespace Test
     {
         Log::Log(LogType::PromptInfo, "[compiler] bytecode listings\n");
 
-        std::vector<fs::path> files = LbnFilesIn(_root / "compiler");
-        _stats.Report("compiler folder is not empty", files.empty() == false);
-
-        for (fs::path const& file : files)
+        for (fs::path const& file : LbnFilesIn(_root / "compiler"))
         {
             std::string name = "compiler/" + file.filename().string();
 
@@ -242,8 +255,7 @@ namespace Test
                 continue;
             }
 
-            _stats.Report(name + " globals table", outcome.globalsError.empty(), "    " + outcome.globalsError);
-
+            // Le listing contient déjà les slots et les noms des globales, il n'y a rien de plus à vérifier sur la table
             fs::path listing = file;
             listing.replace_extension(".asm");
 
@@ -256,6 +268,42 @@ namespace Test
 
             bool same = Normalize(expected) == Normalize(outcome.disassembly);
             _stats.Report(name, same, same ? "" : "    got:\n" + outcome.disassembly + "    expected:\n" + expected);
+        }
+    }
+
+    // Chaque programme est exécuté sans erreur et doit écrire exactement ce qu'il y a dans le fichier .out placé à côté
+    inline void TestVm(fs::path const& _root, TestStats& _stats)
+    {
+        Log::Log(LogType::PromptInfo, "[vm] program output\n");
+
+        for (fs::path const& file : LbnFilesIn(_root / "vm"))
+        {
+            std::string name = "vm/" + file.filename().string();
+
+            Outcome outcome;
+            {
+                Silencer silence;
+                outcome = RunPipeline(file, false, true);
+            }
+
+            if (outcome.code != Error::ErrorCode::Ok)
+            {
+                _stats.Report(name, false, std::string("    ") + CodeName(outcome.code) + " : " + outcome.firstError);
+                continue;
+            }
+
+            fs::path expectedFile = file;
+            expectedFile.replace_extension(".out");
+
+            std::string expected;
+            if (Error e = FileHelper::ReadFile(expectedFile, expected))
+            {
+                _stats.Report(name, false, "    " + e.Format());
+                continue;
+            }
+
+            bool same = Normalize(expected) == Normalize(outcome.output);
+            _stats.Report(name, same, same ? "" : "    got:\n" + outcome.output + "    expected:\n" + expected);
         }
     }
 
@@ -285,11 +333,19 @@ namespace Test
         }
         else
         {
+            // Un dossier vide ou introuvable ne ferait échouer aucun test : on le vérifie une seule fois pour tous
+            bool allFilled = true;
+            for (char const* folder : { "valid", "lexing", "parsing", "semantics", "compiler", "vm", "runtime" })
+                allFilled = allFilled && LbnFilesIn(tests / folder).empty() == false;
+            stats.Report("every test folder has files", allFilled);
+
             TestFolder(tests, "valid",     Error::ErrorCode::Ok,        stats);
             TestFolder(tests, "lexing",    Error::ErrorCode::Lexical,   stats);
             TestFolder(tests, "parsing",   Error::ErrorCode::Syntax,    stats);
             TestFolder(tests, "semantics", Error::ErrorCode::Semantics, stats);
             TestCompiler(tests, stats);
+            TestVm(tests, stats);
+            TestFolder(tests, "runtime",   Error::ErrorCode::Execution, stats, true);
         }
 
         std::string summary = std::to_string(stats.passed) + " passed, " + std::to_string(stats.failed) + " failed\n";

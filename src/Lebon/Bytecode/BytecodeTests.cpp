@@ -7,6 +7,8 @@
 #include "Disassembler.h"
 #include "Heap.hpp"
 #include "Prototype.hpp"
+#include "../core/Error.h"
+#include "../VM/VM.h"
 
 namespace Bytecode
 {
@@ -94,6 +96,131 @@ namespace Bytecode
             Check(program.FindGlobal("inconnu") == CompiledProgram::NoGlobal, "unknown global has no slot");
         }
 
+        // Lance un programme écrit à la main, renvoie ce qu'afise a écrit dans _output.
+        // Les erreurs d'exécution sont loggées sur cerr : on les masque, ces tests en provoquent exprès
+        bool RunProgram(CompiledProgram const& _program, Heap& _heap, std::string& _output)
+        {
+            std::ostringstream out;
+            std::ostringstream errors;
+            std::streambuf* previous = std::cerr.rdbuf(errors.rdbuf());
+
+            VM vm(_heap);
+            vm.SetOutput(out);
+            bool ok = vm.Run(_program);
+
+            std::cerr.rdbuf(previous);
+            ErrorManager::Clear();
+
+            _output = out.str();
+            return ok;
+        }
+
+        // Une boucle écrite à la main : le compilateur ne produit ni comparaison ni saut pour l'instant,
+        // ce test est le seul à exécuter Gt, JmpIfNot et Jmp.   somme = 0 ; i = 3 ; tant que i > 0 : somme += i ; i -= 1
+        void TestVmLoop()
+        {
+            Heap heap;
+            CompiledProgram program;
+            program.globalNames = { "afise" };
+            program.main = std::make_unique<Prototype>();
+
+            Prototype& main = *program.main;
+            main.maxRegisters = 7;
+            uint16_t zero = static_cast<uint16_t>(main.AddConstant(Value::MakeNumber(0)));
+            uint16_t three = static_cast<uint16_t>(main.AddConstant(Value::MakeNumber(3)));
+            uint16_t one = static_cast<uint16_t>(main.AddConstant(Value::MakeNumber(1)));
+
+            main.Emit(EncodeABx(OpCode::LoadK, 0, zero), 1);       // somme
+            main.Emit(EncodeABx(OpCode::LoadK, 1, three), 1);      // i
+            main.Emit(EncodeABx(OpCode::LoadK, 2, zero), 1);
+            main.Emit(EncodeABx(OpCode::LoadK, 3, one), 1);
+
+            size_t loop = main.Here();
+            main.Emit(EncodeABC(OpCode::Gt, 4, 1, 2), 2);
+            size_t exit = main.Emit(EncodeAsBx(OpCode::JmpIfNot, 4, 0), 2);
+            main.Emit(EncodeABC(OpCode::Add, 0, 0, 1), 3);
+            main.Emit(EncodeABC(OpCode::Sub, 1, 1, 3), 3);
+            size_t back = main.Emit(EncodeAsBx(OpCode::Jmp, 0, 0), 3);
+            main.PatchJump(back, loop);
+            main.PatchJump(exit, main.Here());
+
+            main.Emit(EncodeABx(OpCode::GetGlobal, 5, 0), 4);
+            main.Emit(EncodeABC(OpCode::Move, 6, 0), 4);
+            main.Emit(EncodeABC(OpCode::Call, 5, 1), 4);
+            main.Emit(EncodeABC(OpCode::Return, 0, 0), 4);
+
+            std::string output;
+            Check(RunProgram(program, heap, output), "loop runs");
+            Check(output == "6\n", "loop adds 3 + 2 + 1");
+        }
+
+        // f crée une fermeture qui capture sa variable locale (42) et la renvoie. Quand f est terminée sa case de pile est
+        // réutilisée par l'appel suivant, la fermeture ne doit donc plus la lire dans la pile mais dans l'upvalue fermée
+        void TestVmClosedUpvalue()
+        {
+            Heap heap;
+            CompiledProgram program;
+            program.globalNames = { "afise" };
+            program.main = std::make_unique<Prototype>();
+
+            auto inner = std::make_unique<Prototype>();
+            inner->name = "inner";
+            inner->maxRegisters = 2;
+            UpvalDesc captured;
+            captured.fromParentRegister = true;
+            captured.index = 0;
+            inner->upvalues.push_back(captured);
+            uint16_t seven = static_cast<uint16_t>(inner->AddConstant(Value::MakeNumber(7)));
+            inner->Emit(EncodeABx(OpCode::LoadK, 0, seven), 1);    // écrase la case que l'upvalue ouverte désignerait
+            inner->Emit(EncodeABC(OpCode::GetUpval, 1, 0), 1);
+            inner->Emit(EncodeABC(OpCode::Return, 1, 1), 1);
+
+            auto outer = std::make_unique<Prototype>();
+            outer->name = "outer";
+            outer->maxRegisters = 2;
+            uint16_t answer = static_cast<uint16_t>(outer->AddConstant(Value::MakeNumber(42)));
+            int32_t innerIndex = outer->AddProto(std::move(inner));
+            outer->Emit(EncodeABx(OpCode::LoadK, 0, answer), 1);
+            outer->Emit(EncodeABx(OpCode::Closure, 1, static_cast<uint16_t>(innerIndex)), 1);
+            outer->Emit(EncodeABC(OpCode::Return, 1, 1), 1);
+
+            Prototype& main = *program.main;
+            main.maxRegisters = 4;
+            int32_t outerIndex = main.AddProto(std::move(outer));
+            main.Emit(EncodeABx(OpCode::Closure, 0, static_cast<uint16_t>(outerIndex)), 1);
+            main.Emit(EncodeABC(OpCode::Move, 1, 0), 1);
+            main.Emit(EncodeABC(OpCode::Call, 1, 0), 1);           // R1 = la fermeture
+            main.Emit(EncodeABC(OpCode::Call, 1, 0), 1);           // R1 = 42
+            main.Emit(EncodeABx(OpCode::GetGlobal, 2, 0), 2);
+            main.Emit(EncodeABC(OpCode::Move, 3, 1), 2);
+            main.Emit(EncodeABC(OpCode::Call, 2, 1), 2);
+            main.Emit(EncodeABC(OpCode::Return, 0, 0), 2);
+
+            std::string output;
+            Check(RunProgram(program, heap, output), "closure program runs");
+            Check(output == "42\n", "closed upvalue keeps its value after the frame is gone");
+        }
+
+        // Appeler autre chose qu'une fonction doit donner une erreur, pas un crash
+        void TestVmRuntimeError()
+        {
+            Heap heap;
+            CompiledProgram program;
+            program.main = std::make_unique<Prototype>();
+
+            Prototype& main = *program.main;
+            main.maxRegisters = 1;
+            uint16_t five = static_cast<uint16_t>(main.AddConstant(Value::MakeNumber(5)));
+            main.Emit(EncodeABx(OpCode::LoadK, 0, five), 1);
+            main.Emit(EncodeABC(OpCode::Call, 0, 0), 1);
+            main.Emit(EncodeABC(OpCode::Return, 0, 0), 1);
+
+            std::string output;
+            Check(RunProgram(program, heap, output) == false, "calling a number is a runtime error");
+
+            Check(RunProgram(CompiledProgram(), heap, output) == false, "an empty compilation result cannot run");
+        }
+
         // addition(a, b) : keksoz c idon a èk b fwa 2 ... ran c
         void TestDisassembly()
         {
@@ -156,6 +283,9 @@ namespace Bytecode
         TestConstantPool();
         TestJumpPatching();
         TestCompiledProgram();
+        TestVmLoop();
+        TestVmClosedUpvalue();
+        TestVmRuntimeError();
         TestDisassembly();
         return g_failures == 0;
     }

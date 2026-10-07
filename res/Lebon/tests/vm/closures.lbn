@@ -1,0 +1,44 @@
+koz VM : closures, shared variables and nesting finkoz
+
+koz the inner function updates a variable of its parent finkoz
+zafer compteur(depa)
+ouver
+    keksoz total idon depa
+    zafer ajoute(n)
+    ouver
+        total idon total èk n
+        ran total
+    fèrm
+    afise(ajoute(1))
+    afise(ajoute(2))
+    ran ajoute(10)
+fèrm
+afise(compteur(100))
+
+koz the parent sees the change made by the inner function finkoz
+zafer parent()
+ouver
+    keksoz v idon 1
+    zafer change()
+    ouver
+        v idon 5
+    sétou
+    change()
+    ran v
+fèrm
+afise(parent())
+
+koz a variable captured through two levels of functions finkoz
+zafer externe(x)
+ouver
+    zafer milye()
+    ouver
+        zafer enteryè()
+        ouver
+            ran x èk 1
+        fèrm
+        ran enteryè()
+    fèrm
+    ran milye()
+fèrm
+afise(externe(41))
