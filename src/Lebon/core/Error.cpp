@@ -17,8 +17,6 @@ namespace
     }
 }
 
-ErrorManager * ErrorManager::singleton = nullptr;
-
 std::string Error::Format() const
 {
     if (IsOk())

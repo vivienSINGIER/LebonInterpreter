@@ -1,9 +1,8 @@
 #include "main.h"
 
-#include <windows.h>
-
 #include "core/Error.h"
 #include "Test/Test.hpp"
+#include <windows.h>
 
 int main()
 {

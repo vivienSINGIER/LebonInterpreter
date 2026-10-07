@@ -1,8 +1,9 @@
-﻿#ifndef TOKENS_HPP_DEFINED
+#ifndef TOKENS_HPP_DEFINED
 #define TOKENS_HPP_DEFINED
 
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 // Source files are read as UTF-8, without this MSVC stores the accented keywords
@@ -35,7 +36,7 @@ struct Token
     uint32_t row, column;
 };
 
-static std::pair<char, TokenType> g_tokenSingleLetters[] = {
+static std::unordered_map<char, TokenType> g_tokenSingleLetters = {
     { '(', TokenType::L_PARENTHESIS },
     { ')', TokenType::R_PARENTHESIS },
     { '.', TokenType::DOT },
@@ -44,7 +45,7 @@ static std::pair<char, TokenType> g_tokenSingleLetters[] = {
     {'\0', TokenType::END_OF_FILE },
 };
 
-static std::pair<std::string, TokenType> g_tokenKeywords[] = {
+static std::unordered_map<std::string, TokenType> g_tokenKeywords = {
     { "keksoz", TokenType::VAR_DECLARATION },
     { "bazar", TokenType::VAR_DECLARATION },
 
