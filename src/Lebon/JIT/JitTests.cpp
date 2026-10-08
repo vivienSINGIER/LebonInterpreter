@@ -441,6 +441,97 @@ namespace Jit
             Check(RunOutput(source, output), "the demo program is compiled and run");
             Check(output == "S\xC3\xA9 Lebon\nKliyan : Nathan\n9.765\n7.812\n3.255\n18.832\n6.944\n", "the demo program prints its receipt");
         }
+
+        // Conditions : the comparisons and IfStmt.
+        // The sources use the keywords without accents : kan, otreman, sinon-si,
+        // parey, diferan, piti, plis-gran, pa-gran (lower or equal), pa-piti (greater or equal)
+        void TestCodeGenConditions()
+        {
+            auto prints = [](std::string const& _source, char const* _expected, char const* _what)
+            {
+                std::string output;
+                Check(RunOutput(_source, output) && output == _expected, _what);
+            };
+
+            // Each comparison is tried below, on and above its limit
+            prints("afise(1 piti 2)\nafise(2 piti 2)\nafise(3 piti 2)", "true\nfalse\nfalse\n", "lower");
+            prints("afise(1 plis-gran 2)\nafise(2 plis-gran 2)\nafise(3 plis-gran 2)", "false\nfalse\ntrue\n", "greater");
+            prints("afise(1 pa-gran 2)\nafise(2 pa-gran 2)\nafise(3 pa-gran 2)", "true\ntrue\nfalse\n", "lower or equal");
+            prints("afise(1 pa-piti 2)\nafise(2 pa-piti 2)\nafise(3 pa-piti 2)", "false\ntrue\ntrue\n", "greater or equal");
+            prints("afise(1 parey 2)\nafise(2 parey 2)", "false\ntrue\n", "equal");
+            prints("afise(1 diferan 2)\nafise(2 diferan 2)", "true\nfalse\n", "not equal");
+
+            prints("afise(mwin 5 piti 3)\nafise(3 piti mwin 5)\nafise(mwin 1 piti mwin 2)\nafise(mwin 2 piti mwin 1)", "true\nfalse\nfalse\ntrue\n",
+                "negative numbers are ordered");
+            prints("afise(0.5 piti 0.75)\nafise(0.75 piti 0.5)\nafise(2.5 parey 2.5)", "true\nfalse\ntrue\n", "decimals are compared");
+            prints("afise(1 azout 2 parey 3)\nafise(2 fwa 3 plis-gran 10 mwin 5)", "true\ntrue\n", "arithmetic comes before a comparison");
+            prints("keksoz a idon 4\nkeksoz b idon 9\nafise(a piti b)\nafise(b piti a)\nafise(a parey a)", "true\nfalse\ntrue\n", "variables are compared");
+            prints("keksoz b idon 3 piti 4\nafise(b)\nb idon 4 piti 3\nafise(b)", "true\nfalse\n", "a comparison is kept in a variable");
+
+            // Strings and booleans
+            prints("afise(\"a\" parey \"a\")\nafise(\"a\" parey \"b\")\nafise(\"a\" diferan \"b\")\nafise(\"a\" diferan \"a\")", "true\nfalse\ntrue\nfalse\n",
+                "strings are compared");
+            prints("afise((\"a\" azout \"b\") parey \"ab\")\nafise((\"a\" azout \"b\") parey (\"a\" azout \"c\"))", "true\nfalse\n",
+                "an added string is equal to the same text");
+            prints("keksoz s idon \"x\"\nkeksoz t idon s azout \"y\"\nafise(t parey \"xy\")\nafise(s parey t)", "true\nfalse\n", "string variables are compared");
+            prints("afise(pafo parey pafo)\nafise(pafo parey fo)\nafise(pafo diferan fo)\nafise(fo diferan fo)", "true\nfalse\ntrue\nfalse\n",
+                "booleans are compared");
+            prints("afise((1 piti 2) parey pafo)\nafise((2 piti 1) parey pafo)\nafise((1 piti 2) parey (3 piti 4))", "true\nfalse\ntrue\n",
+                "the result of a comparison is a clean boolean");
+
+            // If
+            prints("kan 1 piti 2\nouver\n    afise(1)\nlafin\nafise(9)", "1\n9\n", "a true condition runs its block");
+            prints("kan 2 piti 1\nouver\n    afise(1)\nlafin\nafise(9)", "9\n", "a false condition skips its block");
+            prints("kan pafo\nouver\n    afise(1)\nlafin\nkan fo\nouver\n    afise(2)\nlafin", "1\n", "a boolean is a condition");
+            prints("keksoz b idon 5 plis-gran 3\nkan b\nouver\n    afise(1)\nlafin", "1\n", "a boolean variable is a condition");
+            prints("kan 1 piti 2\nouver\n    afise(1)\nlafin\notreman\nouver\n    afise(2)\nlafin\nafise(9)", "1\n9\n", "a true condition skips the else");
+            prints("kan 2 piti 1\nouver\n    afise(1)\nlafin\notreman\nouver\n    afise(2)\nlafin\nafise(9)", "2\n9\n", "a false condition runs the else");
+            prints("kan \"a\" parey \"a\"\nouver\n    afise(\"same\")\nlafin\notreman\nouver\n    afise(\"other\")\nlafin", "same\n", "a string comparison is a condition");
+
+            // One function for the three paths of a chain
+            std::string const sign = "zafer sign(n)\nouver\n    kan n piti 0\n    ouver\n        ran \"neg\"\n    lafin\n    sinon-si n parey 0\n    ouver\n"
+                "        ran \"zero\"\n    lafin\n    otreman\n    ouver\n        ran \"pos\"\n    lafin\nlafin\n";
+            prints(sign + "afise(sign(mwin 3))\nafise(sign(0))\nafise(sign(8))", "neg\nzero\npos\n", "a chain picks one of its blocks");
+
+            std::string const rank = "zafer rank(n)\nouver\n    kan n piti 10\n    ouver\n        ran 1\n    lafin\n    sinon-si n piti 20\n    ouver\n        ran 2\n    lafin\n"
+                "    sinon-si n piti 30\n    ouver\n        ran 3\n    lafin\n    ran 4\nlafin\n";
+            prints(rank + "afise(rank(5))\nafise(rank(15))\nafise(rank(25))\nafise(rank(35))", "1\n2\n3\n4\n", "a chain without an else falls out");
+
+            prints("keksoz a idon 5\nkan a plis-gran 0\nouver\n    kan a plis-gran 3\n    ouver\n        afise(1)\n    lafin\n    otreman\n    ouver\n        afise(2)\n    lafin\n"
+                "    afise(3)\nlafin\notreman\nouver\n    afise(4)\nlafin\nafise(9)", "1\n3\n9\n", "conditions are nested");
+
+            // Variables and blocks
+            prints("keksoz a idon 1\nkan a parey 1\nouver\n    a idon 10\nlafin\nkan a parey 1\nouver\n    a idon 20\nlafin\nafise(a)", "10\n",
+                "a block assigns a variable declared outside");
+            prints("zafer f(n)\nouver\n    keksoz r idon 0\n    kan n plis-gran 0\n    ouver\n        keksoz t idon n fwa 2\n        r idon t azout 1\n    lafin\n    otreman\n    ouver\n"
+                "        keksoz u idon n mwin 100\n        r idon u\n    lafin\n    keksoz z idon 1000\n    ran r azout z\nlafin\nafise(f(4))\nafise(f(mwin 4))",
+                "1009\n896\n", "each block has its own locals");
+            prints("kan 1 piti 2\nouver\n    afise(1)\n    afise(2)\n    afise(3)\n    afise(4)\n    afise(5)\n    afise(6)\n    afise(7)\n    afise(8)\n    afise(9)\n    afise(10)\n"
+                "    afise(11)\n    afise(12)\nlafin\nafise(0)", "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n0\n", "a long block is run in full");
+            prints("kan 2 piti 1\nouver\n    afise(1)\n    afise(2)\n    afise(3)\n    afise(4)\n    afise(5)\n    afise(6)\n    afise(7)\n    afise(8)\n    afise(9)\n    afise(10)\n"
+                "    afise(11)\n    afise(12)\nlafin\nafise(0)", "0\n", "a long block is skipped in full");
+
+            // Functions
+            prints("zafer abs(n)\nouver\n    kan n piti 0\n    ouver\n        ran mwin n\n    lafin\n    ran n\nlafin\nafise(abs(mwin 7))\nafise(abs(7))\nafise(abs(0))",
+                "7\n7\n0\n", "a return inside a block leaves the function");
+            prints("zafer max(a, b)\nouver\n    kan a plis-gran b\n    ouver\n        ran a\n    lafin\n    otreman\n    ouver\n        ran b\n    lafin\nlafin\n"
+                "afise(max(3, 8))\nafise(max(8, 3))\nafise(max(max(1, 9), max(4, 2)))", "8\n8\n9\n", "both blocks of a function return");
+            prints("zafer even(n)\nouver\n    ran n koup 2 fwa 2 parey n\nlafin\nkan even(4)\nouver\n    afise(\"yes\")\nlafin", "yes\n", "a call is a condition");
+            prints("zafer f(lim)\nouver\n    zafer over(n)\n    ouver\n        kan n plis-gran lim\n        ouver\n            ran pafo\n        lafin\n        ran fo\n    lafin\n"
+                "    afise(over(5))\n    afise(over(50))\nlafin\nf(10)", "false\ntrue\n", "a nested function tests a variable of its parent");
+
+            // Recursion, which needs a condition to stop
+            prints("zafer fakt(n)\nouver\n    kan n pa-gran 1\n    ouver\n        ran 1\n    lafin\n    ran n fwa fakt(n mwin 1)\nlafin\nafise(fakt(1))\nafise(fakt(5))\nafise(fakt(10))",
+                "1\n120\n3.6288e+06\n", "a function calls itself");
+            prints("zafer fib(n)\nouver\n    kan n piti 2\n    ouver\n        ran n\n    lafin\n    ran fib(n mwin 1) azout fib(n mwin 2)\nlafin\nafise(fib(10))\nafise(fib(20))",
+                "55\n6765\n", "a function calls itself twice");
+            prints("zafer som(n)\nouver\n    kan n parey 0\n    ouver\n        ran 0\n    lafin\n    ran n azout som(n mwin 1)\nlafin\nafise(som(100))\nafise(som(1000))",
+                "5050\n500500\n", "a function calls itself a thousand times");
+            prints("zafer rep(s, n)\nouver\n    kan n parey 0\n    ouver\n        ran \"\"\n    lafin\n    ran s azout rep(s, n mwin 1)\nlafin\nafise(rep(\"ab\", 3))",
+                "ababab\n", "a function calling itself builds a string");
+            prints("zafer f(n)\nouver\n    keksoz acc idon 0\n    zafer walk(i)\n    ouver\n        kan i plis-gran n\n        ouver\n            ran\n        lafin\n        acc idon acc azout i\n"
+                "        walk(i azout 1)\n    lafin\n    walk(1)\n    ran acc\nlafin\nafise(f(10))", "55\n", "a nested function calling itself keeps the frame of its parent");
+        }
 #endif
 
         void TestExecution()
@@ -476,6 +567,7 @@ namespace Jit
             TestCodeGenFunctions();
             TestCodeGenStrings();
             TestCodeGenProgram();
+            TestCodeGenConditions();
 #else
             std::cerr << "[jit] execution tests skipped, the generated code is x64 only\n";
 #endif

@@ -31,6 +31,20 @@ namespace Jit
         {
             return g_heap->Intern(_str1->chars + _str2->chars);
         }
+        
+        inline uint32_t CompareString(Bytecode::StringObj* _str1, Bytecode::StringObj* _str2) noexcept
+        {
+            if (_str1->chars.length() != _str2->chars.length())
+                return 0;
+            
+            for (uint32_t i = 0; i < _str1->chars.length(); i++)
+            {
+                if (_str1->chars[i] != _str2->chars[i])
+                    return 0;
+            }
+            
+            return 1;
+        }
     }
 }
 

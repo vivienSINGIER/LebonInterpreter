@@ -351,6 +351,106 @@ namespace Jit
         Emit32(static_cast<uint32_t>(_offset));
     }
 
+    // CONDITIONS
+    // A comparison writes its result in the flags of the processor, a set instruction turns them into 0 or 1
+
+    // ucomiss xmm0, xmm1       0F 2E C1                compares two numbers
+    void Assembler::CmpX0X1()
+    {
+        Emit8(0x0F);
+        Emit8(0x2E);
+        Emit8(0xC1);
+    }
+
+    // cmp rax, [rbp+d32]       48 3B 85 d32            compares two strings or two bools, one of them in a slot
+    void Assembler::CmpRaxRbp(int32_t _offset)
+    {
+        Emit8(0x48);
+        Emit8(0x3B);
+        Emit8(0x85);
+        Emit32(static_cast<uint32_t>(_offset));
+    }
+
+    // sete al                  0F 94 C0                1 if equal
+    void Assembler::SeteAl()
+    {
+        Emit8(0x0F);
+        Emit8(0x94);
+        Emit8(0xC0);
+    }
+
+    // setne al                 0F 95 C0                1 if not equal
+    void Assembler::SetneAl()
+    {
+        Emit8(0x0F);
+        Emit8(0x95);
+        Emit8(0xC0);
+    }
+
+    // setb al                  0F 92 C0                1 if lower
+    void Assembler::SetlAl()
+    {
+        Emit8(0x0F);
+        Emit8(0x92);
+        Emit8(0xC0);
+    }
+
+    // seta al                  0F 97 C0                1 if greater
+    void Assembler::SetgAl()
+    {
+        Emit8(0x0F);
+        Emit8(0x97);
+        Emit8(0xC0);
+    }
+
+    // setbe al                 0F 96 C0                1 if lower or equal
+    void Assembler::SetleAl()
+    {
+        Emit8(0x0F);
+        Emit8(0x96);
+        Emit8(0xC0);
+    }
+
+    // setae al                 0F 93 C0                1 if greater or equal
+    void Assembler::SetgeAl()
+    {
+        Emit8(0x0F);
+        Emit8(0x93);
+        Emit8(0xC0);
+    }
+
+    // movzx eax, al            0F B6 C0                clears the rest of rax, only al was written by the set
+    void Assembler::MovzxEaxAl()
+    {
+        Emit8(0x0F);
+        Emit8(0xB6);
+        Emit8(0xC0);
+    }
+
+    // test eax, eax            85 C0                   checks a condition before a jump
+    void Assembler::TestEaxEax()
+    {
+        Emit8(0x85);
+        Emit8(0xC0);
+    }
+
+    // jz rel32                 0F 84 d32               jumps if the condition is false
+    // The distance is counted from the end of the jump. It is emitted as 0 when the target comes later,
+    // then written with Patch32 at Size() - 4
+    void Assembler::JzRel32(int32_t _distance)
+    {
+        Emit8(0x0F);
+        Emit8(0x84);
+        Emit32(static_cast<uint32_t>(_distance));
+    }
+
+    // jmp rel32                E9 d32                  always jumps, the distance works like the one of jz
+    void Assembler::JmpRel32(int32_t _distance)
+    {
+        Emit8(0xE9);
+        Emit32(static_cast<uint32_t>(_distance));
+    }
+
     void Assembler::Emit8(uint8_t _byte)
     {
         m_code.push_back(_byte);

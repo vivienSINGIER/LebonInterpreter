@@ -43,6 +43,7 @@ namespace Jit
         void Visit(ReturnStmt& _rtrn) override;
         void Visit(UnaryExpr& _expr) override;
         void Visit(BinaryExpr& _expr) override;
+        void Visit(IfStmt& _expr) override;
         
     private:
         JitCode& m_jit;
@@ -94,6 +95,8 @@ namespace Jit
             m_asm.MovRaxImm64(reinterpret_cast<uint64_t>(_helper));
             m_asm.CallRax();
         }
+        
+        void StoreNums(BinaryExpr& _expr);
     };
     
 }

@@ -7,8 +7,6 @@
 
 namespace Jit
 {
-    // Writes x64 machine code in a buffer, one method per instruction form.
-    // Knows nothing about Lebon, the code generator decides what to emit
     class Assembler
     {
     public:
@@ -50,7 +48,7 @@ namespace Jit
         void Mulss();
         void Divss();
         void Xorps();
-        
+
         // CALLS
         void MovRspRax(uint32_t _offset);
         void MovssRspX0(uint32_t _offset);
@@ -69,10 +67,23 @@ namespace Jit
         void MovRaxArcxOff(int32_t _offset);
         void MovArcxOffRax(int32_t _offset);
 
+        // CONDITIONS
+        void CmpX0X1();
+        void CmpRaxRbp(int32_t _offset);
+        void SeteAl();
+        void SetneAl();
+        void SetlAl();
+        void SetgAl();
+        void SetleAl();
+        void SetgeAl();
+        void MovzxEaxAl();
+        void TestEaxEax();
+        void JzRel32(int32_t _distance);
+        void JmpRel32(int32_t _distance);
+
     private:
         std::vector<uint8_t> m_code;
-
-        // Multi-byte values are written little endian, the way x64 reads them
+        
         void Emit8(uint8_t _byte);
         void Emit32(uint32_t _value);
         void Emit64(uint64_t _value);

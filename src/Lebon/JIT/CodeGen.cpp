@@ -208,14 +208,7 @@ void Jit::CodeGen::Visit(BinaryExpr& _expr)
 {
     if (_expr.type == Semantics::InferredType::Number)
     {
-        _expr.left->Accept(*this);
-        int32_t slot = TakeSlot();
-        m_asm.MovssRbpXmm0(slot);
-        
-        _expr.right->Accept(*this);
-        m_asm.MovapsX1X0();
-        m_asm.MovssXmm0Rbp(slot);
-        ReleaseSlot();
+        StoreNums(_expr);
         
         NumberLiteral* divisor = dynamic_cast<NumberLiteral*>(_expr.right.get());
         if (_expr.op == TokenType::DIV && divisor != nullptr && divisor->value == 0.0f)
@@ -233,6 +226,7 @@ void Jit::CodeGen::Visit(BinaryExpr& _expr)
             m_asm.Divss(); break;
         default: break;
         }
+        return;
     }
     
     if (_expr.type == Semantics::InferredType::String)
@@ -250,8 +244,82 @@ void Jit::CodeGen::Visit(BinaryExpr& _expr)
         {
         case TokenType::ADD:
             CallHelper(&Runtime::Concat);    
+        default: break;
         }
+        return;
     }
+    
+    if (_expr.left->type == InferredType::Number)
+    {
+        StoreNums(_expr);
+        
+        m_asm.CmpX0X1();
+
+        switch (_expr.op)
+        {
+        case TokenType::EQ:
+            m_asm.SeteAl(); break;
+        case TokenType::NEQ:
+            m_asm.SetneAl(); break;
+        case TokenType::LT:
+            m_asm.SetlAl(); break;
+        case TokenType::GT:
+            m_asm.SetgAl(); break;
+        case TokenType::LE:
+            m_asm.SetleAl(); break;
+        case TokenType::GE:
+            m_asm.SetgeAl(); break;
+        default: break;
+        }
+        
+        m_asm.MovzxEaxAl();
+        return;
+    }
+    
+    if (_expr.left->type == InferredType::String || _expr.left->type == InferredType::Bool)
+    {
+        _expr.left->Accept(*this);
+        int32_t slot = TakeSlot();
+        m_asm.MovRbpRax(slot);
+        
+        _expr.right->Accept(*this);
+        m_asm.CmpRaxRbp(slot);
+        ReleaseSlot();
+
+        switch (_expr.op)
+        {
+        case TokenType::EQ:
+            m_asm.SeteAl(); break;
+        case TokenType::NEQ:
+            m_asm.SetneAl(); break;
+        default: break;
+        }
+        
+        m_asm.MovzxEaxAl();
+        return;
+    }
+}
+
+void Jit::CodeGen::Visit(IfStmt& _expr)
+{
+    _expr.condition->Accept(*this);
+    
+    m_asm.TestEaxEax();
+    m_asm.JzRel32(0);
+    size_t jz = m_asm.Size() - 4;
+    
+    _expr.thenBranch->Accept(*this);
+    
+    if (_expr.elseBranch != nullptr)
+    {
+        m_asm.JmpRel32(0);
+        size_t jmp = m_asm.Size() - 4;
+        m_asm.Patch32(jz, static_cast<uint32_t>(m_asm.Size() - (jz + 4)));
+        _expr.elseBranch->Accept(*this);
+        m_asm.Patch32(jmp, static_cast<uint32_t>(m_asm.Size() - (jmp + 4)));
+    }
+    else
+        m_asm.Patch32(jz, static_cast<uint32_t>(m_asm.Size() - (jz + 4)));
 }
 
 void Jit::CodeGen::CallBuiltIn(CallExpr& _call, SymbolInfo const& _function)
@@ -282,6 +350,18 @@ void Jit::CodeGen::CallBuiltIn(CallExpr& _call, SymbolInfo const& _function)
         Report(arg, "this value can't be printed");
         break;
     }
+}
+
+void Jit::CodeGen::StoreNums(BinaryExpr& _expr)
+{
+    _expr.left->Accept(*this);
+    int32_t slot = TakeSlot();
+    m_asm.MovssRbpXmm0(slot);
+        
+    _expr.right->Accept(*this);
+    m_asm.MovapsX1X0();
+    m_asm.MovssXmm0Rbp(slot);
+    ReleaseSlot();
 }
 
 void Jit::CodeGen::Report(Node const& _at, std::string const& _message)

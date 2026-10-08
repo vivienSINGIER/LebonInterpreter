@@ -422,8 +422,7 @@ namespace Semantics
         InferredType rType = ValueType(*_expr.right);
 
         bool poisoned = lType == InferredType::Error || rType == InferredType::Error;
-
-        // == et != comparent deux valeurs de même type, le résultat est un bool
+        
         if (_expr.op == TokenType::EQ || _expr.op == TokenType::NEQ)
         {
             if (poisoned)
@@ -442,8 +441,7 @@ namespace Semantics
             SetVar(_expr, m_types.New(InferredType::Bool));
             return;
         }
-
-        // <, >, <= et >= n'ordonnent que des nombres, le résultat est un bool
+        
         if (_expr.op == TokenType::LT || _expr.op == TokenType::GT || _expr.op == TokenType::LE || _expr.op == TokenType::GE)
         {
             bool unordered = !m_types.Bind(_expr.left->typeVar, InferredType::Number) || !m_types.Bind(_expr.right->typeVar, InferredType::Number);
