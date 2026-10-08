@@ -12,6 +12,8 @@
 #include "Compiler/Compiler.h"
 #include "Bytecode/Disassembler.h"
 #include "VM/VM.h"
+#include "Test/Test.hpp"
+#include "Tree-Walking/TreeWalking.h"
 
 #include <chrono>
 #include <cstdio>
@@ -121,13 +123,20 @@ namespace
     // Runs the analysed program with the back end chosen on the command line
     Error Execute(Driver::Options const& _options, Program& _program, Runtime::Context& _context)
     {
-        (void)_program;
-        (void)_context;
-
         switch (_options.mode)
         {
-        case Driver::Mode::Tree: return Error::Execution("the tree-walking interpreter isn't implemented yet", 0, 0);
-		case Driver::Mode::Vm:   return Error::Ok(); // RunVm qui gère l'exécution du VM
+        case Driver::Mode::Tree:
+            try
+            {
+                RUNTIME::TreeWalking tree(*_context.out);
+                tree.Run(_program);
+            }
+            catch (RUNTIME::RuntimeError const& e)
+            {
+                return Error::Execution(e.message, e.row, e.column);
+            }
+            return Error::Ok();
+        case Driver::Mode::Vm:   return Error::Ok(); // RunVm qui gère l'exécution du VM
         case Driver::Mode::Jit:  return Error::Execution("the JIT isn't implemented yet", 0, 0);
         }
         return Error::Ok();
@@ -225,6 +234,9 @@ int main(int _argc, char** _argv)
         std::fputs(Driver::Usage(program).c_str(), stdout);
         return 0;
     }
+
+    if (options.test)
+        return Test::RunAllTests() == 0 ? 0 : 1;
 
     // The exit code is the code of the first error: 0 ok, 1 lexical, 2 syntax,
     // 3 semantics, 4 execution, 5 io

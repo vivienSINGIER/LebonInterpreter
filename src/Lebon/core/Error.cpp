@@ -93,6 +93,8 @@ Error Error::Io(std::string _message, fs::path _path)
     return e;
 }
 
+ErrorManager* ErrorManager::m_instance = nullptr;
+
 ErrorManager* ErrorManager::GetErrorManager()
 {
     if (m_instance == nullptr)

@@ -39,6 +39,7 @@ namespace Driver
             if (arg == "--trace")               { _options.trace = true; continue; }
             if (arg == "--time")                { _options.time = true; continue; }
             if (arg == "--no-output")           { _options.noOutput = true; continue; }
+            if (arg == "--test")                { _options.test = true; continue; }
 
             // --mode=<name>, or --mode <name>
             if (arg == "--mode" || arg.starts_with("--mode="))
@@ -68,7 +69,7 @@ namespace Driver
             hasFile = true;
         }
 
-        if (hasFile == false && _options.help == false) { _error = "no source file given"; return false; }
+        if (hasFile == false && _options.help == false && _options.test == false) { _error = "no source file given"; return false; }
         return true;
     }
 
@@ -78,6 +79,10 @@ namespace Driver
         usage += _program;
         usage +=
             " <file> [options]\n"
+            "       ";
+        usage += _program;
+        usage +=
+            " --test\n"
             "\n"
             "options:\n"
             "  --mode=tree|vm|jit  how the program runs (default: tree)\n"
@@ -87,6 +92,7 @@ namespace Driver
             "  --trace             trace the execution\n"
             "  --time              print the time spent in each stage\n"
             "  --no-output         drop the program output (benchmarks)\n"
+            "  --test              run every test of res/Lebon (no file needed), exit code 1 if one fails\n"
             "  -h, --help          show this help\n";
         return usage;
     }

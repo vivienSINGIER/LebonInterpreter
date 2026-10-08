@@ -1,0 +1,92 @@
+#ifndef TREE_WALKING_H_INCLUDED
+#define TREE_WALKING_H_INCLUDED
+
+#include <functional>
+#include <variant>
+#include "Parser/AST.h"
+#include "Runtime/Sink.h"
+
+namespace RUNTIME
+{
+    struct Callable;
+    struct Environment;
+    
+    using Value = std::variant<std::monostate, float, bool, std::string, std::shared_ptr<Callable>>;
+    
+    struct RuntimeError
+    {
+        std::string message;
+        uint32_t row, column;
+    };
+    
+    struct Callable
+    {
+        std::string name;
+        FuncDecl* decl = nullptr;                  
+        std::shared_ptr<Environment> closure;          
+        std::function<Value(std::vector<Value>&)> native;
+    };
+    
+    std::string ToString(Value const& _v);
+
+    struct Environment
+    {
+        std::unordered_map<std::string, Value> vars;
+        std::shared_ptr<Environment> parent;
+
+        explicit Environment(std::shared_ptr<Environment> _parent = nullptr)
+            : parent(std::move(_parent)) {}
+
+        void Define(std::string const& _name, Value _v) { vars[_name] = std::move(_v); }
+
+        Value* Lookup(std::string const& _name)
+        {
+            for (Environment* e = this; e; e = e->parent.get())
+            {
+                auto it = e->vars.find(_name);
+                if (it != e->vars.end())
+                    return &it->second;
+            }
+            return nullptr;
+        }
+    };
+    
+    class TreeWalking : Visitor
+    {
+        Runtime::OutputSink& m_out;
+        Value m_result;
+        std::shared_ptr<Environment> m_env;
+        bool m_returning = false;
+        size_t m_depth = 0;
+        static constexpr size_t MaxCallDepth = 1024;
+        
+        void DefineBuiltIns();
+        Value Eval(Node& _n) { _n.Accept(*this); return std::move(m_result); }
+        
+    public:
+        // What afise prints goes to _out, formatted like the other back ends
+        explicit TreeWalking(Runtime::OutputSink& _out) : m_out(_out) {}
+
+        // Throws RuntimeError when the program fails
+        void Run(Program& _p);
+        
+        void Visit(NumberLiteral&)  override;
+        void Visit(StringLiteral&)  override;
+        void Visit(BooleanLiteral&) override;
+        void Visit(Identifier&)     override;
+        void Visit(UnaryExpr&)      override;
+        void Visit(BinaryExpr&)     override;
+        void Visit(AssignExpr&)     override;
+        void Visit(CallExpr&)       override;
+        void Visit(VarDecl&)        override;
+        void Visit(ExprStmt&)       override;
+        void Visit(ReturnStmt&)     override;
+        void Visit(Block&)          override;
+        void Visit(FuncDecl&)       override;
+        void Visit(Program&)        override;
+        void Visit(IfStmt&)         override;
+        
+    };
+}
+
+#endif

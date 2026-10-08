@@ -29,7 +29,7 @@ namespace Test
     };
 
     // Chaque GETGLOBAL / SETGLOBAL de la fonction et de ses fonctions internes doit viser un slot de la table
-    inline bool GlobalSlotsInRange(Bytecode::Prototype const& _proto, size_t _count)
+    bool GlobalSlotsInRange(Bytecode::Prototype const& _proto, size_t _count)
     {
         for (Bytecode::Instruction i : _proto.code)
         {
@@ -49,7 +49,7 @@ namespace Test
     // Lance le lexer, le parser, l'analyseur et le compilateur sur un fichier, puis la VM si _run est vrai.
     // Une étape ne tourne que si les précédentes n'ont loggé aucune erreur.
     // Renvoie le code de la première erreur, Ok si le fichier est passé partout.
-    inline Outcome RunPipeline(fs::path const& _path, bool _verbose, bool _run = false)
+    Outcome RunPipeline(fs::path const& _path, bool _verbose, bool _run = false)
     {
         Outcome outcome;
 
@@ -122,8 +122,7 @@ namespace Test
         return outcome;
     }
 
-    // Pipeline complet sur un fichier, exécution comprise, renvoie seulement le code d'erreur
-    inline Error::ErrorCode RunFile(fs::path const& _path, bool _verbose)
+    Error::ErrorCode RunFile(fs::path const& _path, bool _verbose)
     {
         return RunPipeline(_path, _verbose, true).code;
     }
@@ -150,7 +149,7 @@ namespace Test
     };
 
     // Nom lisible d'un code d'erreur, pour les messages de test
-    inline char const* CodeName(Error::ErrorCode _code)
+    char const* CodeName(Error::ErrorCode _code)
     {
         switch (_code)
         {
@@ -165,7 +164,7 @@ namespace Test
     }
 
     // Retire les \r et les blancs de fin pour qu'ils ne fassent pas échouer la comparaison d'un listing
-    inline std::string Normalize(std::string _text)
+    std::string Normalize(std::string _text)
     {
         _text.erase(std::remove(_text.begin(), _text.end(), '\r'), _text.end());
         while (_text.empty() == false && (_text.back() == '\n' || _text.back() == ' '))
@@ -196,7 +195,7 @@ namespace Test
     };
 
     // Les fichiers .lbn directement dans le dossier (sans les sous-dossiers), triés par nom
-    inline std::vector<fs::path> LbnFilesIn(fs::path const& _dir)
+    std::vector<fs::path> LbnFilesIn(fs::path const& _dir)
     {
         std::vector<fs::path> all, files;
         FileHelper::ListDir(_dir, all);
@@ -212,7 +211,7 @@ namespace Test
     // Chaque fichier du dossier doit s'arrêter sur le type d'erreur attendu (Ok pour les fichiers valides).
     // Un fichier compilé doit aussi avoir une table de globales cohérente (ce qui ne concerne que les fichiers valides).
     // _run : les fichiers sont aussi exécutés, pour les erreurs qui n'arrivent qu'à l'exécution
-    inline void TestFolder(fs::path const& _root, char const* _folder, Error::ErrorCode _expected, TestStats& _stats, bool _run = false)
+    void TestFolder(fs::path const& _root, char const* _folder, Error::ErrorCode _expected, TestStats& _stats, bool _run = false)
     {
         Log::Log(LogType::PromptInfo, std::string("[") + _folder + "] expects " + CodeName(_expected) + "\n");
 
@@ -235,7 +234,7 @@ namespace Test
     }
 
     // Chaque fichier doit se compiler sans erreur en exactement le listing .asm placé à côté
-    inline void TestCompiler(fs::path const& _root, TestStats& _stats)
+    void TestCompiler(fs::path const& _root, TestStats& _stats)
     {
         Log::Log(LogType::PromptInfo, "[compiler] bytecode listings\n");
 
@@ -272,7 +271,7 @@ namespace Test
     }
 
     // Chaque programme du dossier est exécuté sans erreur et doit écrire exactement ce qu'il y a dans le fichier .out placé à côté
-    inline void TestOutputs(fs::path const& _dir, std::string const& _label, TestStats& _stats)
+    void TestOutputs(fs::path const& _dir, std::string const& _label, TestStats& _stats)
     {
         Log::Log(LogType::PromptInfo, "[" + _label + "] program output\n");
 
@@ -308,7 +307,7 @@ namespace Test
     }
 
     // Dossier res/Lebon/tests, cherché en remontant depuis le dossier courant
-    inline Error FindTestsDir(fs::path& _out)
+    Error FindTestsDir(fs::path& _out)
     {
         fs::path root;
         if (Error e = FileHelper::FindUpwards(fs::current_path(), "res/Lebon/tests", root))
@@ -319,7 +318,7 @@ namespace Test
     }
 
     // Auto-tests du bytecode, puis tous les dossiers de res/Lebon/tests. Renvoie le nombre de tests en échec
-    inline int RunAllTests()
+    int RunAllTests()
     {
         TestStats stats;
 
