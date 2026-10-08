@@ -1,0 +1,51 @@
+koz VM : a literal next to a variable, on the right and on the left of every operator finkoz
+
+zafer nombres(n)
+ouver
+    afise(n èk 5)
+    afise(5 èk n)
+    afise(n mwin 3)
+    afise(3 mwin n)
+    afise(n fwa 2)
+    afise(2 fwa n)
+    afise(n koup 4)
+    afise(40 koup n)
+fèrm
+nombres(10)
+
+koz comparisons : a literal on the left is turned around, 11 piti n means n dépas 11 finkoz
+zafer comparaisons(n)
+ouver
+    afise(n piti 11)
+    afise(11 piti n)
+    afise(n pli-piti-egal 10)
+    afise(10 pli-piti-egal n)
+    afise(n dépas 9)
+    afise(9 dépas n)
+    afise(n plis-gran-egal 11)
+    afise(11 plis-gran-egal n)
+    afise(n parey 10)
+    afise(10 parey n)
+    afise(n diferan 10)
+    afise(11 diferan n)
+fèrm
+comparaisons(10)
+
+koz strings : concatenation keeps the order, equality does not care finkoz
+zafer textes(s)
+ouver
+    afise(s èk "!")
+    afise("> " èk s)
+    afise(s parey "Lebon")
+    afise("Lebon" parey s)
+    afise(s diferan "autre")
+fèrm
+textes("Lebon")
+
+koz two literals, a literal in a longer expression and a literal assigned to a variable finkoz
+afise(2 fwa 3 èk 4)
+afise(10 mwin 2 mwin 3)
+afise(1 èk 2 piti 4)
+keksoz total idon 7
+total idon total fwa 3
+afise(total)

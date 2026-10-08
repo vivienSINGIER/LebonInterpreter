@@ -1,0 +1,20 @@
+koz Benchmark : global variables. 80 000 reads and writes of a global, one condition per step finkoz
+
+keksoz total idon 0
+
+zafer cumul(k)
+ouver
+    kan k piti 1 ouver ran total fèrm
+    total idon total èk 1
+    ran cumul(k mwin 1)
+fèrm
+
+zafer repete(r)
+ouver
+    kan r piti 1 ouver ran 0 fèrm
+    cumul(400)
+    ran repete(r mwin 1)
+fèrm
+
+afise(repete(200))
+afise(total)

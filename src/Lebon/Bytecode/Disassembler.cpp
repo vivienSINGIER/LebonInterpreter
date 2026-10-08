@@ -65,9 +65,11 @@ namespace Bytecode
         std::ostringstream out;
         out << std::left << std::setw(9) << info.name << ' ' << operands;
 
-        // Show what the constant actually is
+        // Show what the constant actually is (the second operand, or the third one for ADDK, LTK...)
         if (bKind == Operand::Const && static_cast<size_t>(b) < _proto.constants.size())
             out << "  ; " << ToDebugString(_proto.constants[b]);
+        else if (info.format == OpFormat::ABC && info.c == Operand::Const && static_cast<size_t>(GetC(i)) < _proto.constants.size())
+            out << "  ; " << ToDebugString(_proto.constants[GetC(i)]);
         else if (bKind == Operand::Global && static_cast<size_t>(b) < _globals.size())
             out << "  ; " << _globals[b];
         else if (bKind == Operand::Proto && static_cast<size_t>(b) < _proto.protos.size())
