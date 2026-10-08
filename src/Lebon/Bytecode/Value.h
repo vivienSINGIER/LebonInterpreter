@@ -4,10 +4,12 @@
 #include <cstdint>
 #include <string>
 
-#include "Object.hpp"
-
 namespace Bytecode
 {
+    // Only pointed to here : Object.hpp includes this file, so it cannot be included back
+    struct Obj;
+    struct StringObj;
+
     enum class ValueType : uint8_t { Nil, Bool, Number, String, Function, Native };
 
     struct Value
@@ -16,11 +18,11 @@ namespace Bytecode
         union
         {
             bool b;
-            double n;
+            float n;
             Obj* o;
         };
 
-        Value() : n(0.0) {}
+        Value() : n(0.0f) {}
 
         static Value MakeNil() { return Value(); }
         static Value MakeBool(bool _b);
@@ -33,7 +35,7 @@ namespace Bytecode
         bool IsNumber() const { return type == ValueType::Number; }
         bool IsString() const { return type == ValueType::String; }
 
-        StringObj* AsString() const { return static_cast<StringObj*>(o); }
+        StringObj* AsString() const;    // defined in Value.cpp, it needs the full StringObj
 
         bool IsTruthy() const { return !(IsNil() || (IsBool() && !b)); }
     };

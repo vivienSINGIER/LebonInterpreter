@@ -33,7 +33,20 @@ namespace Bytecode
         Gt,         // A B C    R[A] = (R[B] >  R[C])
         Ge,         // A B C    R[A] = (R[B] >= R[C])
 
-        Jmp,        // sBx      pc += sBx
+        // Même opérations avec une constante comme second opérande : C est l'index de la constante (0 à 255).
+        // Elles évitent un LOADK avant chaque opération avec un littéral
+        AddK,       // A B C    R[A] = R[B] + K[C]
+        ConcatK,    // A B C    R[A] = R[B] .. K[C]
+        SubK,       // A B C    R[A] = R[B] - K[C]
+        MulK,       // A B C    R[A] = R[B] * K[C]
+        DivK,       // A B C    R[A] = R[B] / K[C]
+        EqK,        // A B C    R[A] = (R[B] == K[C])
+        LtK,        // A B C    R[A] = (R[B] <  K[C])
+        LeK,        // A B C    R[A] = (R[B] <= K[C])
+        GtK,        // A B C    R[A] = (R[B] >  K[C])
+        GeK,        // A B C    R[A] = (R[B] >= K[C])
+
+        Jmp,       // sBx      pc += sBx
         JmpIfNot,   // A sBx    if R[A] is false (or nil) then pc += sBx
 
         Call,       // A B      R[A] = R[A](R[A+1] .. R[A+B]), the result replaces the callee
@@ -84,7 +97,17 @@ namespace Bytecode
             { "LE",        F::ABC,  O::Reg,  O::Reg,   O::Reg  },
             { "GT",        F::ABC,  O::Reg,  O::Reg,   O::Reg  },
             { "GE",        F::ABC,  O::Reg,  O::Reg,   O::Reg  },
-            { "JMP",       F::AsBx, O::None, O::Jump,  O::None },
+            { "ADDK",      F::ABC,  O::Reg,  O::Reg,   O::Const },
+            { "CONCATK",   F::ABC,  O::Reg,  O::Reg,   O::Const },
+            { "SUBK",      F::ABC,  O::Reg,  O::Reg,   O::Const },
+            { "MULK",      F::ABC,  O::Reg,  O::Reg,   O::Const },
+            { "DIVK",      F::ABC,  O::Reg,  O::Reg,   O::Const },
+            { "EQK",       F::ABC,  O::Reg,  O::Reg,   O::Const },
+            { "LTK",       F::ABC,  O::Reg,  O::Reg,   O::Const },
+            { "LEK",       F::ABC,  O::Reg,  O::Reg,   O::Const },
+            { "GTK",       F::ABC,  O::Reg,  O::Reg,   O::Const },
+            { "GEK",       F::ABC,  O::Reg,  O::Reg,   O::Const },
+            { "JMP",      F::AsBx, O::None, O::Jump,  O::None },
             { "JMPIFNOT",  F::AsBx, O::Reg,  O::Jump,  O::None },
             { "CALL",      F::ABC,  O::Reg,  O::Imm,   O::None },
             { "RETURN",    F::ABC,  O::Reg,  O::Imm,   O::None },

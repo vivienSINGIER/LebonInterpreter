@@ -1,0 +1,73 @@
+koz VM : a local read in place must keep the value it had when the expression started finkoz
+
+koz the right operand changes the variable, the left one keeps the old value finkoz
+zafer ancien()
+ouver
+    keksoz a idon 1
+    ran a èk (a idon 5)
+fèrm
+afise(ancien())
+
+koz a call changes the variable through a closure finkoz
+zafer capture()
+ouver
+    keksoz x idon 1
+    zafer change()
+    ouver
+        x idon 10
+        ran 100
+    fèrm
+    ran x èk change()
+fèrm
+afise(capture())
+
+koz the left operand changes the variable, the right one sees the new value finkoz
+zafer nouveau()
+ouver
+    keksoz b idon 1
+    ran (b idon 5) èk b
+fèrm
+afise(nouveau())
+
+koz a call on the right of a local that nothing captures finkoz
+zafer double(n)
+ouver
+    ran n èk n
+fèrm
+
+zafer appel(y)
+ouver
+    ran y fwa double(y)
+fèrm
+afise(appel(3))
+
+koz the result is stored in a variable that is also an operand finkoz
+zafer carre(n)
+ouver
+    keksoz r idon n
+    r idon r fwa r
+    r idon r mwin n
+    ran r
+fèrm
+afise(carre(4))
+
+koz unary minus, return and condition on a local finkoz
+zafer oppose(v)
+ouver
+    ran mwin v
+fèrm
+afise(oppose(3))
+
+zafer texte(f)
+ouver
+    kan f
+    ouver
+        ran "oui"
+    fèrm
+    otreman
+    ouver
+        ran "non"
+    fèrm
+fèrm
+afise(texte(vré))
+afise(texte(fo))

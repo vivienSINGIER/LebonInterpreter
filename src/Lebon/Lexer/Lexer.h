@@ -37,6 +37,7 @@ private:
     void String();
     void Number();
     void Identifier();
+    void ExtendHyphenKeyword();
     void ScanToken();
     void AddToken(TokenType _type);
     

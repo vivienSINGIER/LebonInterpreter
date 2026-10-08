@@ -1,0 +1,25 @@
+koz VM : globals, blocks, locals and assignments finkoz
+
+keksoz total idon 1
+keksoz vid
+vid idon 7
+total idon total èk vid
+afise(total)
+ouver
+    keksoz local idon total fwa 2
+    local idon local mwin 1
+    total idon local
+    ouver
+        keksoz autre idon local
+        afise(autre)
+    fèrm
+    keksoz suite idon 5
+    afise(suite)
+fèrm
+afise(total)
+keksoz x idon 0
+keksoz y idon 0
+x idon y idon 5
+afise(x èk y)
+keksoz nom idon "Nathan"
+afise("Bonzour " èk nom)

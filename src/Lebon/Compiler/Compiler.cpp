@@ -6,14 +6,55 @@
 
 namespace Bytecode
 {
-    // Point d'entrée : repart d'un main vide et y compile tout le programme
-    std::unique_ptr<Prototype> Compiler::Compile(Program& _program)
+    namespace
     {
-        auto main = std::make_unique<Prototype>();
+        // La variante de l'opération dont le second opérande est une constante (ADD donne ADDK...)
+        OpCode ConstantFormOf(OpCode _op)
+        {
+            switch (_op)
+            {
+            case OpCode::Add:    return OpCode::AddK;
+            case OpCode::Concat: return OpCode::ConcatK;
+            case OpCode::Sub:    return OpCode::SubK;
+            case OpCode::Mul:    return OpCode::MulK;
+            case OpCode::Div:    return OpCode::DivK;
+            case OpCode::Eq:     return OpCode::EqK;
+            case OpCode::Lt:     return OpCode::LtK;
+            case OpCode::Le:     return OpCode::LeK;
+            case OpCode::Gt:     return OpCode::GtK;
+            case OpCode::Ge:     return OpCode::GeK;
+            default:             return OpCode::Count;
+            }
+        }
+
+        // L'opération équivalente quand on échange les deux opérandes (5 < x est x > 5), OpCode::Count si l'opération
+        // n'est pas inversible : une soustraction, une division ou une concaténation dépendent de l'ordre
+        OpCode MirroredOp(OpCode _op)
+        {
+            switch (_op)
+            {
+            case OpCode::Add: return OpCode::Add;
+            case OpCode::Mul: return OpCode::Mul;
+            case OpCode::Eq:  return OpCode::Eq;
+            case OpCode::Lt:  return OpCode::Gt;
+            case OpCode::Gt:  return OpCode::Lt;
+            case OpCode::Le:  return OpCode::Ge;
+            case OpCode::Ge:  return OpCode::Le;
+            default:          return OpCode::Count;
+            }
+        }
+    }
+
+    // Point d'entrée : repart d'un main vide et y compile tout le programme.
+    // Le résultat porte aussi les noms des globales, dans l'ordre des slots utilisés par GETGLOBAL / SETGLOBAL
+    CompiledProgram Compiler::Compile(Program& _program)
+    {
+        CompiledProgram result;
+        result.main = std::make_unique<Prototype>();
 
         m_funcs.clear();
         m_funcs.emplace_back();
-        Func().proto = main.get();
+        Func().proto = result.main.get();
 
         m_symbols = &_program.stack.table;
         m_target = 0;
@@ -22,12 +63,14 @@ namespace Bytecode
 
         _program.Accept(*this);
 
+        result.globalNames = m_symbols->GlobalNames();
+
         m_funcs.clear();
         m_symbols = nullptr;
         if (m_errorCount > 0)
-            return nullptr;
+            return CompiledProgram();
 
-        return main;
+        return result;
     }
 
     // Vrai dans main hors de tout bloc : une variable déclarée ici est une globale
@@ -54,6 +97,42 @@ namespace Bytecode
         return nullptr;
     }
 
+    LocalVar* Compiler::LocalOf(Expr& _expr)
+    {
+        Identifier* identifier = dynamic_cast<Identifier*>(&_expr);
+        return identifier != nullptr ? FindLocal(Func(), identifier->name) : nullptr;
+    }
+
+    // Une variable lue sur place ne doit pas changer entre le moment où l'opération la lit et celui où le reste de
+    // l'expression a été évalué. Les opérandes qui s'évaluent ensuite sont donc parcourus : une affectation à ce nom,
+    // ou un appel quand une fermeture a capturé la variable (elle peut l'écrire par SETUPVAL)
+    bool Compiler::MayChange(Node const& _expr, LocalVar const& _local) const
+    {
+        if (auto const* assign = dynamic_cast<AssignExpr const*>(&_expr))
+            return assign->name == _local.name || MayChange(*assign->value, _local);
+
+        if (auto const* call = dynamic_cast<CallExpr const*>(&_expr))
+        {
+            if (_local.captured)
+                return true;
+
+            for (ExprPtr const& arg : call->args)
+            {
+                if (MayChange(*arg, _local))
+                    return true;
+            }
+            return false;
+        }
+
+        if (auto const* binary = dynamic_cast<BinaryExpr const*>(&_expr))
+            return MayChange(*binary->left, _local) || MayChange(*binary->right, _local);
+
+        if (auto const* unary = dynamic_cast<UnaryExpr const*>(&_expr))
+            return MayChange(*unary->operand, _local);
+
+        return false;
+    }
+
     // Cherche le nom dans les fonctions parentes. Local du parent : capturé depuis son registre.
     // Plus haut : capturé via l'upvalue du parent. Un nom n'est capturé qu'une fois par fonction.
     int Compiler::ResolveUpvalue(size_t _level, std::string const& _name, Node const& _at)
@@ -71,6 +150,7 @@ namespace Bytecode
         UpvalDesc desc;
         if (LocalVar* local = FindLocal(m_funcs[_level - 1], _name))
         {
+            local->captured = true;
             desc.fromParentRegister = true;
             desc.index = local->registre;
         }
@@ -137,6 +217,23 @@ namespace Bytecode
             return 0;
         }
         return static_cast<uint16_t>(index);
+    }
+
+    // Index (0 à 255, la taille de l'opérande C) de la constante que représente un littéral nombre ou chaîne.
+    // -1 si l'expression n'est pas un littéral, ou si l'index est trop grand : le littéral est alors chargé par LOADK,
+    // il est déjà dans le pool à cette même place
+    int Compiler::ConstantOperand(Expr& _expr)
+    {
+        Value value;
+        if (auto* number = dynamic_cast<NumberLiteral*>(&_expr))
+            value = Value::MakeNumber(number->value);
+        else if (auto* text = dynamic_cast<StringLiteral*>(&_expr))
+            value = Value::MakeString(m_heap.Intern(text->value));
+        else
+            return -1;
+
+        int32_t index = Proto().AddConstant(value);
+        return (index >= 0 && index <= 255) ? index : -1;
     }
 
     // Slot de la globale dans le tableau de la VM : les globales sont lues par index, plus par nom
@@ -209,7 +306,8 @@ namespace Bytecode
         Emit(EncodeABx(OpCode::GetGlobal, m_target, GlobalSlot(_node.symbol, _node)), _node);
     }
 
-    // Moins unaire : compile l'opérande (dans _dst si c'est un temporaire libre) puis NEG
+    // Moins unaire : l'opérande est lu sur place si c'est une variable locale, sinon compilé (dans _dst si c'est
+    // un temporaire libre), puis NEG
     void Compiler::Visit(UnaryExpr& _node)
     {
         if (_node.op != TokenType::SUB)
@@ -221,23 +319,46 @@ namespace Bytecode
         uint8_t dst = m_target;
         size_t saved = Func().freeReg;
 
-        uint8_t operand = dst;
-        if (IsTopTemp(dst) == false)
-            operand = AllocReg(_node);
+        uint8_t operand;
+        if (LocalVar* local = LocalOf(*_node.operand))
+        {
+            operand = local->registre;
+        }
+        else
+        {
+            operand = dst;
+            if (IsTopTemp(dst) == false)
+                operand = AllocReg(_node);
 
-        CompileTo(*_node.operand, operand);
+            CompileTo(*_node.operand, operand);
+        }
+
         Emit(EncodeABC(OpCode::Neg, dst, operand), _node);
 
         Func().freeReg = saved;
     }
 
     // Opération binaire : choisit l'opcode, compile le côté gauche puis le droit dans deux registres, puis émet l'opération.
-    // L'addition est typée par l'analyseur : ADD pour les nombres, CONCAT pour les chaînes, la VM n'a rien à tester
+    // L'addition est typée par l'analyseur : ADD pour les nombres, CONCAT pour les chaînes, la VM n'a rien à tester.
+    // Les comparaisons laissent un bool dans le registre cible. != est un EQ suivi d'un NOT
     void Compiler::Visit(BinaryExpr& _node)
     {
         OpCode op = OpCode::Add;
+        bool negate = false;
         switch (_node.op)
         {
+        case TokenType::EQ:
+            op = OpCode::Eq; break;
+        case TokenType::NEQ:
+            op = OpCode::Eq; negate = true; break;
+        case TokenType::LT:
+            op = OpCode::Lt; break;
+        case TokenType::GT:
+            op = OpCode::Gt; break;
+        case TokenType::LE:
+            op = OpCode::Le; break;
+        case TokenType::GE:
+            op = OpCode::Ge; break;
         case TokenType::ADD:
             if (_node.type == Semantics::InferredType::Number)
                 op = OpCode::Add;
@@ -263,15 +384,81 @@ namespace Bytecode
         uint8_t dst = m_target;
         size_t saved = Func().freeReg;
 
-        uint8_t left = dst;
-        if (IsTopTemp(dst) == false)
-            left = AllocReg(_node);
-        CompileTo(*_node.left, left);
+        // Un littéral (nombre ou chaîne) devient le troisième opérande de l'instruction (ADDK, LTK...), sans LOADK.
+        // À gauche, seulement pour les opérations qu'on peut inverser en échangeant les opérandes : 5 piti x devient x dépas 5
+        Expr* variable = nullptr;
+        int constant = ConstantOperand(*_node.right);
+        if (constant >= 0)
+        {
+            variable = _node.left.get();
+        }
+        else if (MirroredOp(op) != OpCode::Count && (constant = ConstantOperand(*_node.left)) >= 0)
+        {
+            variable = _node.right.get();
+            op = MirroredOp(op);
+        }
 
-        uint8_t right = AllocReg(_node);
-        CompileTo(*_node.right, right);
+        if (variable != nullptr)
+        {
+            uint8_t operand;
+            if (LocalVar* local = LocalOf(*variable))
+            {
+                operand = local->registre;
+            }
+            else
+            {
+                operand = dst;
+                if (IsTopTemp(dst) == false)
+                    operand = AllocReg(_node);
+
+                CompileTo(*variable, operand);
+            }
+
+            Emit(EncodeABC(ConstantFormOf(op), dst, operand, static_cast<uint8_t>(constant)), _node);
+            if (negate)
+                Emit(EncodeABC(OpCode::Not, dst, dst), _node);
+
+            Func().freeReg = saved;
+            return;
+        }
+
+        // Un opérande qui est une variable locale est lu directement dans son registre, sans MOVE vers un temporaire.
+        // À gauche, c'est permis seulement si l'évaluation de l'opérande droit ne peut pas changer la variable
+        // (a èk (a idon 5) doit garder l'ancienne valeur de a). À droite, l'opération suit immédiatement : toujours permis
+        LocalVar* leftLocal = LocalOf(*_node.left);
+        if (leftLocal != nullptr && MayChange(*_node.right, *leftLocal))
+            leftLocal = nullptr;
+
+        uint8_t left;
+        if (leftLocal != nullptr)
+        {
+            left = leftLocal->registre;
+        }
+        else
+        {
+            left = dst;
+            if (IsTopTemp(dst) == false)
+                left = AllocReg(_node);
+
+            CompileTo(*_node.left, left);
+        }
+
+        uint8_t right;
+        if (LocalVar* rightLocal = LocalOf(*_node.right))
+        {
+            right = rightLocal->registre;
+        }
+        else
+        {
+            // Si la gauche n'occupe pas _dst, le registre cible (un temporaire libre) peut recevoir l'opérande droit :
+            // il est lu avant que l'opération n'écrive son résultat dedans
+            right = (leftLocal != nullptr && IsTopTemp(dst)) ? dst : AllocReg(_node);
+            CompileTo(*_node.right, right);
+        }
 
         Emit(EncodeABC(op, dst, left, right), _node);
+        if (negate)
+            Emit(EncodeABC(OpCode::Not, dst, dst), _node);
 
         Func().freeReg = saved;
     }
@@ -405,12 +592,19 @@ namespace Bytecode
         }
     }
 
-    // Sans valeur : RETURN vide. Avec valeur : calculée dans un temporaire puis renvoyée
+    // Sans valeur : RETURN vide. Avec valeur : calculée dans un temporaire puis renvoyée,
+    // ou renvoyée directement depuis son registre si c'est une variable locale
     void Compiler::Visit(ReturnStmt& _node)
     {
         if (_node.value == nullptr)
         {
             Emit(EncodeABC(OpCode::Return, 0, 0), _node);
+            return;
+        }
+
+        if (LocalVar* local = LocalOf(*_node.value))
+        {
+            Emit(EncodeABC(OpCode::Return, local->registre, 1), _node);
             return;
         }
 
@@ -421,6 +615,56 @@ namespace Bytecode
         Emit(EncodeABC(OpCode::Return, reg, 1), _node);
 
         Func().freeReg = saved;
+    }
+
+    // Fait pointer le saut déjà émis vers la prochaine instruction. Erreur si la distance ne tient pas dans l'instruction
+    void Compiler::PatchJumpHere(size_t _jump, Node const& _at)
+    {
+        size_t distance = Proto().Here() - _jump - 1;
+        if (distance > static_cast<size_t>(MaxSBx))
+        {
+            Report(_at, "this block is too long to be jumped over");
+            return;
+        }
+
+        Proto().PatchJump(_jump, Proto().Here());
+    }
+
+    // Condition : le test est calculé dans un temporaire libéré aussitôt. JMPIFNOT saute le bloc "alors" si le test est faux.
+    // Avec un sinon, le bloc "alors" se termine par un JMP qui saute le bloc "sinon", et JMPIFNOT arrive au début de celui-ci
+    void Compiler::Visit(IfStmt& _node)
+    {
+        FuncState& fn = Func();
+        size_t saved = fn.freeReg;
+
+        // Une condition qui est une variable locale est testée sur place
+        uint8_t test;
+        if (LocalVar* local = LocalOf(*_node.condition))
+        {
+            test = local->registre;
+        }
+        else
+        {
+            test = AllocReg(_node);
+            CompileTo(*_node.condition, test);
+        }
+        size_t skipThen = Emit(EncodeAsBx(OpCode::JmpIfNot, test, 0), *_node.condition);
+        fn.freeReg = saved;
+
+        _node.thenBranch->Accept(*this);
+
+        if (_node.elseBranch)
+        {
+            size_t skipElse = Emit(EncodeAsBx(OpCode::Jmp, 0, 0), _node);
+            PatchJumpHere(skipThen, _node);
+
+            _node.elseBranch->Accept(*this);
+            PatchJumpHere(skipElse, _node);
+        }
+        else
+        {
+            PatchJumpHere(skipThen, _node);
+        }
     }
 
     // Ouvre une portée, compile les instructions, puis oublie les locales du bloc et libère leurs registres
@@ -455,7 +699,6 @@ namespace Bytecode
         FuncState& fn = Func();
         fn.proto = proto.get();
 
-        // The parameters are the first locals, one register each
         for (Param const& param : _node.params)
         {
             uint8_t reg = AllocReg(_node);
@@ -485,7 +728,6 @@ namespace Bytecode
 
         uint8_t reg = AllocReg(_node);
 
-        // A local function is visible in its own body, so recursion captures it as an upvalue
         if (global == false)
         {
             fn.locals.push_back({ _node.name, reg });

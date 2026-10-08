@@ -20,6 +20,7 @@ struct CallExpr;
 struct VarDecl;
 struct ExprStmt;
 struct ReturnStmt;
+struct IfStmt;
 struct Block;
 struct Param;
 struct FuncDecl;
@@ -39,6 +40,7 @@ struct Visitor
 	virtual void Visit(VarDecl&) = 0;
 	virtual void Visit(ExprStmt&) = 0;
 	virtual void Visit(ReturnStmt&) = 0;
+	virtual void Visit(IfStmt&) = 0;
 	virtual void Visit(Block&) = 0;
 	virtual void Visit(FuncDecl&) = 0;
 	virtual void Visit(Program&) = 0;
@@ -142,6 +144,15 @@ struct ReturnStmt : Node
 struct Block : Node 
 { 
 	std::vector<NodePtr> statements; 
+	void Accept(Visitor& _visitor) override;
+};
+
+// kan condition ouver ... fèrm [ sinon-si condition ouver ... fèrm ] [ otreman ouver ... fèrm ]
+struct IfStmt : Node
+{
+	ExprPtr condition;
+	std::unique_ptr<Block> thenBranch;
+	NodePtr elseBranch;		// un Block (otreman) ou un autre IfStmt (sinon-si), nullptr sans sinon
 	void Accept(Visitor& _visitor) override;
 };
 

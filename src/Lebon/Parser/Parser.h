@@ -16,16 +16,23 @@
  * Blank lines (NEWLINE*) are allowed between statements and before a function body.
  *
  * program        = { statement } END_OF_FILE ;
- * statement      = varDecl | funcDecl | returnStmt | block | exprStmt ;
+ * statement      = varDecl | funcDecl | returnStmt | ifStmt | block | exprStmt ;
  * varDecl        = VAR_DECLARATION IDENTIFIER [ ASSIGN expression ] end ;
  * funcDecl       = FUNC_DECLARATION IDENTIFIER "(" [ IDENTIFIER { "," IDENTIFIER } ] ")" block ;
  * returnStmt     = RETURN [ expression ] end ;
+ * ifStmt         = IF expression block [ elseClause ] ;
+ * elseClause     = ELSE_IF expression block [ elseClause ]
+ *                | ELSE ( block | IF expression block [ elseClause ] ) ;
  * block          = SCOPE_START { statement } SCOPE_END ;
  * exprStmt       = expression end ;
  * end            = NEWLINE | (before) SCOPE_END | (before) END_OF_FILE ;
  *
+ * Blank lines are also allowed between the condition and its block, and before ELSE / ELSE_IF.
+ *
  * expression     = assignment ;
- * assignment     = IDENTIFIER ASSIGN assignment | additive ;
+ * assignment     = IDENTIFIER ASSIGN assignment | equality ;
+ * equality       = comparison { ( EQ | NEQ ) comparison } ;
+ * comparison     = additive { ( LT | GT | LE | GE ) additive } ;
  * additive       = multiplicative { ( ADD | SUB ) multiplicative } ;
  * multiplicative = unary { ( MUL | DIV ) unary } ;
  * unary          = SUB unary | call ;
@@ -68,12 +75,15 @@ private:
 	NodePtr VarDeclaration();
 	NodePtr FuncDeclaration();
 	NodePtr ReturnStatement();
+	NodePtr IfStatement();
 	std::unique_ptr<Block> BlockStatement();
 	NodePtr ExpressionStatement();
 
 	// Expressions
 	ExprPtr Expression();
 	ExprPtr Assignment();
+	ExprPtr Equality();
+	ExprPtr Comparison();
 	ExprPtr Additive();
 	ExprPtr Multiplicative();
 	ExprPtr Unary();

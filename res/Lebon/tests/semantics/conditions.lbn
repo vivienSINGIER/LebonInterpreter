@@ -1,0 +1,29 @@
+koz Semantics : conditions and comparisons that do not type finkoz
+
+keksoz age idon 20
+keksoz nom idon "Alice"
+
+koz error : the condition is not a bool finkoz
+kan age ouver afise("x") fèrm
+kan "texte" ouver afise("x") fèrm
+
+koz error : two different types cannot be compared finkoz
+kan age parey nom ouver afise("x") fèrm
+
+koz error : only numbers are ordered finkoz
+kan nom piti "Bob" ouver afise("x") fèrm
+kan vré dépas fo ouver afise("x") fèrm
+
+koz error : the condition has no value finkoz
+kan afise("x") ouver afise("y") fèrm
+
+koz error : a variable of a block is not visible after it finkoz
+kan vré
+ouver
+    keksoz secret idon 1
+fèrm
+afise(secret)
+
+koz error : the result of a comparison is a bool, not a number finkoz
+keksoz resultat idon age piti 30
+resultat idon 5
