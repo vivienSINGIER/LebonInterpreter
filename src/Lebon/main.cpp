@@ -8,12 +8,14 @@
 #include "Parser/AST.h"
 #include "Parser/ASTPrinter.h"
 #include "Semantics/Analyser.h"
-#include "runtime/Runtime.h"
+#include "Runtime/Runtime.h"
 #include "Compiler/Compiler.h"
 #include "Bytecode/Disassembler.h"
 #include "VM/VM.h"
-#include "Test/Test.hpp"
 #include "Tree-Walking/TreeWalking.h"
+#include "JIT/CodeGen.h"
+#include "JIT/Jit.hpp"
+#include "Test/Test.hpp"
 
 #include <chrono>
 #include <cstdio>
@@ -22,9 +24,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-#include "JIT/CodeGen.h"
-#include "JIT/Jit.hpp"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -63,7 +62,6 @@ namespace
         std::vector<std::pair<char const*, double>> m_stages;
     };
 
-    // The VM prints on a std::ostream, this sends what it writes to the output sink of the run
     class SinkBuf : public std::streambuf
     {
     public:
@@ -90,9 +88,29 @@ namespace
         Runtime::OutputSink& m_sink;
     };
 
-    // Compiles the analysed program to bytecode then runs it on the VM.
-    // The compilation and the execution are timed apart, like the other stages.
-    void RunVm(Driver::Options const& _options, Program& _program, Runtime::Context& _context, StageTimes& _times)
+    Error RunTree(Driver::Options const& _options, Program& _program, Runtime::Context& _context, StageTimes& _times)
+    {
+        if (_options.dumpBytecode)
+            Log::Log(LogType::Warning, "--dump-bytecode has no effect in tree mode\n");
+
+        Error result = Error::Ok();
+
+        _times.Measure("run", [&] {
+            try
+            {
+                RUNTIME::TreeWalking tree(*_context.out);
+                tree.Run(_program);
+            }
+            catch (RUNTIME::RuntimeError const& e)
+            {
+                result = Error::Execution(e.message, e.row, e.column);
+            }
+        });
+
+        return result;
+    }
+
+    Error RunVm(Driver::Options const& _options, Program& _program, Runtime::Context& _context, StageTimes& _times)
     {
         if (_options.trace)
             Log::Log(LogType::Warning, "--trace isn't supported by the VM yet\n");
@@ -104,7 +122,7 @@ namespace
 
         // The compiler logged why it failed
         if (!compiled)
-            return;
+            return Error::Ok();
 
         if (_options.dumpBytecode)
             Bytecode::Disassemble(*compiled.main, std::cout, compiled.globalNames);
@@ -119,55 +137,53 @@ namespace
         _times.Measure("run", [&] {
             vm.Run(compiled);
             out.flush();
-            _context.out->Flush();
         });
+
+        return Error::Ok();
     }
 
-    // Compiles the analysed program to machine code then runs it.
-    // Everything the program prints goes to the output sink of the run
-    Error RunJit(Program& _program, Runtime::Context& _context)
+    Error RunJit(Program& _program, Runtime::Context& _context, StageTimes& _times)
     {
 #ifdef _M_X64
         Jit::JitCode jit;
         Jit::CodeGen codeGen(jit, _program.stack.table);
 
+        bool generated = false;
+        _times.Measure("compile", [&] { generated = codeGen.Run(_program); });
+
         // The code generator logged why it failed
-        if (codeGen.Run(_program) == false)
+        if (generated == false)
             return Error::Ok();
 
         if (jit.code.Entry() == nullptr)
             return Error::Execution("the JIT couldn't get executable memory", 0, 0);
 
-        jit.Run(*_context.out);
+        _times.Measure("run", [&] { jit.Run(*_context.out); });
+
         return Error::Ok();
 #else
         (void)_program;
         (void)_context;
+        (void)_times;
         return Error::Execution("the JIT only runs in a 64 bits build", 0, 0);
 #endif
     }
-    
-    // Runs the analysed program with the back end chosen on the command line
-    Error Execute(Driver::Options const& _options, Program& _program, Runtime::Context& _context)
+
+    // Runs the analysed program with the back end chosen on the command line, then flushes its output.
+    // Each back end times its own stages. Returns its error, Ok if the program ran.
+    Error Execute(Driver::Options const& _options, Program& _program, Runtime::Context& _context, StageTimes& _times)
     {
+        Error result = Error::Ok();
+
         switch (_options.mode)
         {
-        case Driver::Mode::Tree:
-            try
-            {
-                RUNTIME::TreeWalking tree(*_context.out);
-                tree.Run(_program);
-            }
-            catch (RUNTIME::RuntimeError const& e)
-            {
-                return Error::Execution(e.message, e.row, e.column);
-            }
-            return Error::Ok();
-        case Driver::Mode::Vm:   return Error::Ok(); // RunVm qui gère l'exécution du VM
-        case Driver::Mode::Jit:
-            return RunJit(_program, _context);
+        case Driver::Mode::Tree: result = RunTree(_options, _program, _context, _times); break;
+        case Driver::Mode::Vm:   result = RunVm(_options, _program, _context, _times);   break;
+        case Driver::Mode::Jit:  result = RunJit(_program, _context, _times);            break;
         }
-        return Error::Ok();
+
+        _context.out->Flush();
+        return result;
     }
 
     // Runs the lexer, the parser, the analyser then the back end on one file.
@@ -179,10 +195,12 @@ namespace
 
         Lexer lexer(_options.file);
         times.Measure("lex", [&] { lexer.Scan(); });
+
         if (_options.dumpTokens)
             lexer.DisplayTokens();
 
         std::unique_ptr<Program> program;
+
         if (ErrorManager::HasErrors() == false)
         {
             times.Measure("parse", [&] {
@@ -198,7 +216,6 @@ namespace
                 analyser.Run(*program);
             });
 
-            // Printed after the analysis so the types and symbol ids are filled
             if (_options.dumpAst)
             {
                 AstPrinter printer;
@@ -208,26 +225,13 @@ namespace
 
         if (program && ErrorManager::HasErrors() == false)
         {
-            if (_options.dumpBytecode && _options.mode == Driver::Mode::Tree)
-                Log::Log(LogType::Warning, "--dump-bytecode has no effect in tree mode\n");
-
             Runtime::ConsoleSink console;
             Runtime::NullSink null;
 
             Runtime::Context context;
             context.out = _options.noOutput ? static_cast<Runtime::OutputSink*>(&null) : &console;
 
-            if (_options.mode == Driver::Mode::Vm)
-            {
-                RunVm(_options, *program, context, times);
-            }
-            else
-            {
-                times.Measure("run", [&] {
-                    ErrorManager::LogError(Execute(_options, *program, context));
-                    context.out->Flush();
-                });
-            }
+            ErrorManager::LogError(Execute(_options, *program, context, times));
         }
 
         if (_options.time)
