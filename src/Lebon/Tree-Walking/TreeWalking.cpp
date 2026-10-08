@@ -7,6 +7,25 @@
 
 using namespace RUNTIME;
 
+std::string RUNTIME::ToString(Value const& _v)
+{
+    auto f = std::get_if<float>(&_v);
+    auto b = std::get_if<bool>(&_v);
+    auto s = std::get_if<std::string>(&_v);
+    if (f)
+        return std::to_string(*f);
+    if (b)
+    {
+        if (*b)
+            return "true";
+        return "false";
+    }
+    if (s)
+        return *s;
+
+    return "-1";
+}
+
 
 void TreeWalking::Run(Program& _p)
 {

@@ -15,7 +15,7 @@
 
 namespace TestSortAlgo
 {
-    inline void RunBenchmark()
+    void RunBenchmark()
     {
         /*using Words = std::vector<std::string>;
         using Clock = std::chrono::steady_clock;
@@ -131,7 +131,7 @@ namespace TestSortAlgo
         END_OF_FILE
     };
     
-    inline void RunTest()
+    void RunTest()
     {
         static std::pair<std::string, TokenType> g_tokenKeywords[] = {
             { "keksoz", TokenType::VAR_DECLARATION },
@@ -240,7 +240,7 @@ namespace TestSortAlgo
         };
     }
     
-    inline void RunBenchmarkSearch()
+    void RunBenchmarkSearch()
     {
         static std::pair<std::string, TokenType> g_tokenKeywords[] = {
             { "keksoz", TokenType::VAR_DECLARATION },

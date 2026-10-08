@@ -45,7 +45,7 @@ struct Error
 
 class ErrorManager
 {
-    inline static ErrorManager* m_instance = nullptr;
+    static ErrorManager* m_instance;
     std::vector<Error> m_errors;
 
 public:
