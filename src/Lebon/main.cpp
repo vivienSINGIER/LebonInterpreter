@@ -12,6 +12,7 @@
 #include "Compiler/Compiler.h"
 #include "Bytecode/Disassembler.h"
 #include "VM/VM.h"
+#include "Test/Test.hpp"
 #include "Tree-Walking/TreeWalking.h"
 
 #include <chrono>
@@ -233,6 +234,9 @@ int main(int _argc, char** _argv)
         std::fputs(Driver::Usage(program).c_str(), stdout);
         return 0;
     }
+
+    if (options.test)
+        return Test::RunAllTests() == 0 ? 0 : 1;
 
     // The exit code is the code of the first error: 0 ok, 1 lexical, 2 syntax,
     // 3 semantics, 4 execution, 5 io

@@ -26,6 +26,7 @@ namespace Driver
         bool trace = false;
         bool time = false;
         bool noOutput = false;
+        bool test = false;
         bool help = false;
     };
 
