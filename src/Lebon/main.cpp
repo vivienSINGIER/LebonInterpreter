@@ -229,39 +229,59 @@ namespace
         if (_options.time)
             times.Print();
 
+        if (_options.mem)
+            std::fprintf(stderr, "%s\n", Driver::FormatMemoryLine(Driver::Memory::Process(), times.MemoryOf("run")).c_str());
+
         return code;
     }
 
-    // --bench: the file given, or every program of res/Lebon/benchmarks. Returns the exit code
+    // The file given, or every program of res/Lebon/benchmarks. False if there is none
+    bool BenchmarkFiles(Driver::Options const& _options, std::vector<fs::path>& _files)
+    {
+        if (_options.file.empty() == false)
+        {
+            _files.push_back(_options.file);
+            return true;
+        }
+
+        fs::path tests;
+        if (Error e = Test::FindTestsDir(tests))
+        {
+            Log::Log(LogType::Error, e.Format() + "\n");
+            return false;
+        }
+
+        fs::path const folder = tests.parent_path() / "benchmarks";
+        _files = Test::LbnFilesIn(folder);
+        if (_files.empty())
+        {
+            Log::Log(LogType::Error, "no benchmark found in " + folder.string() + "\n");
+            return false;
+        }
+        return true;
+    }
+
+    // --bench: time every file on each back end. Returns the exit code
     int RunBench(Driver::Options _options)
     {
         std::vector<fs::path> files;
-
-        if (_options.file.empty() == false)
-        {
-            files.push_back(_options.file);
-        }
-        else
-        {
-            fs::path tests;
-            if (Error e = Test::FindTestsDir(tests))
-            {
-                Log::Log(LogType::Error, e.Format() + "\n");
-                return 1;
-            }
-
-            files = Test::LbnFilesIn(tests.parent_path() / "benchmarks");
-            if (files.empty())
-            {
-                Log::Log(LogType::Error, "no benchmark found in " + (tests.parent_path() / "benchmarks").string() + "\n");
-                return 1;
-            }
-        }
+        if (BenchmarkFiles(_options, files) == false)
+            return 1;
 
         // Dumps and timings would drown the table
         _options.dumpTokens = _options.dumpAst = _options.dumpBytecode = _options.trace = _options.time = false;
 
         return Driver::RunBenchmark(_options, files, RunFile) == 0 ? 0 : 1;
+    }
+
+    // --bench-mem: the memory of every file on each back end. Returns the exit code
+    int RunBenchMem(Driver::Options const& _options)
+    {
+        std::vector<fs::path> files;
+        if (BenchmarkFiles(_options, files) == false)
+            return 1;
+
+        return Driver::RunMemoryBenchmark(_options, files) == 0 ? 0 : 1;
     }
 }
 
@@ -293,6 +313,9 @@ int main(int _argc, char** _argv)
 
     if (options.bench)
         return RunBench(options);
+
+    if (options.benchMem)
+        return RunBenchMem(options);
 
     // The exit code is the code of the first error: 0 ok, 1 lexical, 2 syntax,
     // 3 semantics, 4 execution, 5 io

@@ -42,6 +42,8 @@ namespace Driver
             if (arg == "--time")                { _options.time = true; continue; }
             if (arg == "--no-output")           { _options.noOutput = true; continue; }
             if (arg == "--test")                { _options.test = true; continue; }
+            if (arg == "--mem")                 { _options.mem = true; continue; }
+            if (arg == "--bench-mem")           { _options.benchMem = true; continue; }
 
             // --bench, or --bench=<runs>
             if (arg == "--bench" || arg.starts_with("--bench="))
@@ -91,7 +93,7 @@ namespace Driver
             hasFile = true;
         }
 
-        if (hasFile == false && _options.help == false && _options.test == false && _options.bench == false) { _error = "no source file given"; return false; }
+        if (hasFile == false && _options.help == false && _options.test == false && _options.bench == false && _options.benchMem == false) { _error = "no source file given"; return false; }
         return true;
     }
 
@@ -109,6 +111,10 @@ namespace Driver
         usage += _program;
         usage +=
             " [file] --bench[=runs]\n"
+            "       ";
+        usage += _program;
+        usage +=
+            " [file] --bench-mem\n"
             "\n"
             "options:\n"
             "  --mode=tree|vm|jit  how the program runs (default: tree)\n"
@@ -120,6 +126,9 @@ namespace Driver
             "  --no-output         drop the program output (benchmarks)\n"
             "  --bench[=runs]      time the file (default: every file of res/Lebon/benchmarks) on tree, vm and jit,\n"
             "                      or only on the --mode given; 10 timed runs by default\n"
+            "  --mem               print the memory used by the run (peaks of the process, allocations of the run stage)\n"
+            "  --bench-mem         memory of the file (default: every benchmark) on tree, vm and jit, or only the --mode given;\n"
+            "                      each back end runs in its own process, the peaks are compared with an empty program\n"
             "  --test              run every test of res/Lebon (no file needed), exit code 1 if one fails\n"
             "  -h, --help          show this help\n";
         return usage;
