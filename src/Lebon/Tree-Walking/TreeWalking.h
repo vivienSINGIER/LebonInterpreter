@@ -4,6 +4,7 @@
 #include <functional>
 #include <variant>
 #include "Parser/AST.h"
+#include "Runtime/Sink.h"
 
 namespace RUNTIME
 {
@@ -69,14 +70,21 @@ namespace RUNTIME
     
     class TreeWalking : Visitor
     {
+        Runtime::OutputSink& m_out;
         Value m_result;
         std::shared_ptr<Environment> m_env;
         bool m_returning = false;
+        size_t m_depth = 0;
+        static constexpr size_t MaxCallDepth = 1024;
         
         void DefineBuiltIns();
         Value Eval(Node& _n) { _n.Accept(*this); return std::move(m_result); }
         
     public:
+        // What afise prints goes to _out, formatted like the other back ends
+        explicit TreeWalking(Runtime::OutputSink& _out) : m_out(_out) {}
+
+        // Throws RuntimeError when the program fails
         void Run(Program& _p);
         
         void Visit(NumberLiteral&)  override;

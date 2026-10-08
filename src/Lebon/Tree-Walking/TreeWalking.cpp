@@ -3,7 +3,7 @@
 
 #include "TreeWalking.h"
 
-#include <iostream>
+#include <sstream>
 
 using namespace RUNTIME;
 
@@ -124,16 +124,22 @@ void TreeWalking::Visit(CallExpr& _c)
     if (args.size() != fn.decl->params.size())
         throw RuntimeError{ "wrong argument count", _c.row, _c.column };
 
+    // Same limit as the VM, a runaway recursion must be an error and not a crash of the host stack
+    if (m_depth >= MaxCallDepth)
+        throw RuntimeError{ "stack overflow", _c.row, _c.column };
+
     auto saved = m_env;
-    m_env = std::make_shared<Environment>(fn.closure);     
+    m_env = std::make_shared<Environment>(fn.closure);
     for (size_t i = 0; i < args.size(); i++)
         m_env->Define(fn.decl->params[i].name, args[i]);
 
-    for (auto& s : fn.decl->body->statements)              
+    m_depth++;
+    for (auto& s : fn.decl->body->statements)
     {
         s->Accept(*this);
         if (m_returning) break;
     }
+    m_depth--;
 
     m_env = saved;
     if (!m_returning)
@@ -207,9 +213,21 @@ void TreeWalking::DefineBuiltIns()
 {
     auto afise = std::make_shared<Callable>();
     afise->name = "afise";
-    afise->native = [](std::vector<Value>& _args) -> Value
+    afise->native = [this](std::vector<Value>& _args) -> Value
     {
-        std::cout << ToString(_args[0]) << "\n";
+        // Same text as Bytecode::ToString (what the VM prints), so both back ends give the same output
+        Value const& v = _args[0];
+        if (auto f = std::get_if<float>(&v))
+        {
+            std::ostringstream text;
+            text << *f;
+            m_out.Write(text.str());
+        }
+        else
+        {
+            m_out.Write(ToString(v));
+        }
+        m_out.Write("\n");
         return {};
     };
     m_env->Define("afise", afise);
