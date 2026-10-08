@@ -45,8 +45,8 @@ namespace Jit
         
         // ARITHMETIC
         void MovapsX1X0();
-        void AddsX0X1();
-        void SubssX0X1();
+        void Adds();
+        void Subss();
         void Mulss();
         void Divss();
         void Xorps();
@@ -59,6 +59,15 @@ namespace Jit
         void MovRdxRax();
         void MovRcxRbp(int32_t _offset);
         void CallRax();
+
+        // PARENT FRAMES
+        void MovRcxRbpReg();
+        void MovRcxArcxOff(int32_t _offset);
+        void MovRspRcx(uint32_t _offset);
+        void MovssXmm0ArcxOff(int32_t _offset);
+        void MovssArcxOffXmm0(int32_t _offset);
+        void MovRaxArcxOff(int32_t _offset);
+        void MovArcxOffRax(int32_t _offset);
 
     private:
         std::vector<uint8_t> m_code;

@@ -29,8 +29,7 @@ namespace Jit
             VirtualFree(memory, 0, MEM_RELEASE);
             return false;
         }
-
-        // The processor may still hold the old content of these addresses in its instruction cache
+        
         FlushInstructionCache(GetCurrentProcess(), memory, _code.size());
 
         m_memory = memory;

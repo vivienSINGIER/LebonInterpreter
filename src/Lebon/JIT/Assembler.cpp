@@ -175,7 +175,7 @@ namespace Jit
     }
 
     // addss xmm0, xmm1         F3 0F 58 C1             add on numbers
-    void Assembler::AddsX0X1()
+    void Assembler::Adds()
     {
         Emit8(0xF3);
         Emit8(0x0F);
@@ -184,7 +184,7 @@ namespace Jit
     }
 
     // subss xmm0, xmm1         F3 0F 5C C1             sub
-    void Assembler::SubssX0X1()
+    void Assembler::Subss()
     {
         Emit8(0xF3);
         Emit8(0x0F);
@@ -281,6 +281,74 @@ namespace Jit
     {
         Emit8(0xFF);
         Emit8(0xD0);
+    }
+
+    // PARENT FRAMES
+    // A nested function reaches the variables of its parents through rcx, which holds the rbp of the frame they live in
+
+    // mov rcx, rbp             48 89 E9                starts from the frame of the current function
+    void Assembler::MovRcxRbpReg()
+    {
+        Emit8(0x48);
+        Emit8(0x89);
+        Emit8(0xE9);
+    }
+
+    // mov rcx, [rcx+d32]       48 8B 89 d32            goes one frame up, d32 is where the parent link is
+    void Assembler::MovRcxArcxOff(int32_t _offset)
+    {
+        Emit8(0x48);
+        Emit8(0x8B);
+        Emit8(0x89);
+        Emit32(static_cast<uint32_t>(_offset));
+    }
+
+    // mov [rsp+d32], rcx       48 89 8C 24 d32         passes the parent link to a Lebon function
+    void Assembler::MovRspRcx(uint32_t _offset)
+    {
+        Emit8(0x48);
+        Emit8(0x89);
+        Emit8(0x8C);
+        Emit8(0x24);
+        Emit32(_offset);
+    }
+
+    // movss xmm0, [rcx+d32]    F3 0F 10 81 d32         loads a number of a parent
+    void Assembler::MovssXmm0ArcxOff(int32_t _offset)
+    {
+        Emit8(0xF3);
+        Emit8(0x0F);
+        Emit8(0x10);
+        Emit8(0x81);
+        Emit32(static_cast<uint32_t>(_offset));
+    }
+
+    // movss [rcx+d32], xmm0    F3 0F 11 81 d32         stores a number of a parent
+    void Assembler::MovssArcxOffXmm0(int32_t _offset)
+    {
+        Emit8(0xF3);
+        Emit8(0x0F);
+        Emit8(0x11);
+        Emit8(0x81);
+        Emit32(static_cast<uint32_t>(_offset));
+    }
+
+    // mov rax, [rcx+d32]       48 8B 81 d32            loads a string or a bool of a parent
+    void Assembler::MovRaxArcxOff(int32_t _offset)
+    {
+        Emit8(0x48);
+        Emit8(0x8B);
+        Emit8(0x81);
+        Emit32(static_cast<uint32_t>(_offset));
+    }
+
+    // mov [rcx+d32], rax       48 89 81 d32            stores a string or a bool of a parent
+    void Assembler::MovArcxOffRax(int32_t _offset)
+    {
+        Emit8(0x48);
+        Emit8(0x89);
+        Emit8(0x81);
+        Emit32(static_cast<uint32_t>(_offset));
     }
 
     void Assembler::Emit8(uint8_t _byte)
