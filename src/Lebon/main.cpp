@@ -23,6 +23,9 @@
 #include <utility>
 #include <vector>
 
+#include "JIT/CodeGen.h"
+#include "JIT/Jit.hpp"
+
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -120,6 +123,30 @@ namespace
         });
     }
 
+    // Compiles the analysed program to machine code then runs it.
+    // Everything the program prints goes to the output sink of the run
+    Error RunJit(Program& _program, Runtime::Context& _context)
+    {
+#ifdef _M_X64
+        Jit::JitCode jit;
+        Jit::CodeGen codeGen(jit, _program.stack.table);
+
+        // The code generator logged why it failed
+        if (codeGen.Run(_program) == false)
+            return Error::Ok();
+
+        if (jit.code.Entry() == nullptr)
+            return Error::Execution("the JIT couldn't get executable memory", 0, 0);
+
+        jit.Run(*_context.out);
+        return Error::Ok();
+#else
+        (void)_program;
+        (void)_context;
+        return Error::Execution("the JIT only runs in a 64 bits build", 0, 0);
+#endif
+    }
+    
     // Runs the analysed program with the back end chosen on the command line
     Error Execute(Driver::Options const& _options, Program& _program, Runtime::Context& _context)
     {
@@ -137,7 +164,8 @@ namespace
             }
             return Error::Ok();
         case Driver::Mode::Vm:   return Error::Ok(); // RunVm qui gère l'exécution du VM
-        case Driver::Mode::Jit:  return Error::Execution("the JIT isn't implemented yet", 0, 0);
+        case Driver::Mode::Jit:
+            return RunJit(_program, _context);
         }
         return Error::Ok();
     }

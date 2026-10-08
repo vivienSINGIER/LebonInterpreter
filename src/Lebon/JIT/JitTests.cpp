@@ -11,6 +11,7 @@
 #include "CodeGen.h"
 #include "ExecutableMemory.h"
 #include "Jit.hpp"
+#include "Runtime.hpp"
 #include "Lexer/Lexer.h"
 #include "Parser/Parser.h"
 #include "Semantics/Analyser.h"
@@ -275,14 +276,15 @@ namespace Jit
         // Runs the source like RunNumber, _out receives what it printed instead of the console
         bool RunOutput(std::string const& _source, std::string& _out)
         {
-            std::ostringstream captured;
-            std::streambuf* console = std::cout.rdbuf(captured.rdbuf());
+            ::Runtime::BufferSink captured;
+            ::Runtime::OutputSink* console = Runtime::g_out;
+            Runtime::g_out = &captured;
 
             float ignored = 0.0f;
             bool ok = RunNumber(_source, ignored);
 
-            std::cout.rdbuf(console);
-            _out = captured.str();
+            Runtime::g_out = console;
+            _out = captured.Str();
             return ok;
         }
 
