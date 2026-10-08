@@ -1,5 +1,7 @@
 ﻿#include "Options.h"
 
+#include <charconv>
+
 namespace Driver
 {
     namespace
@@ -41,6 +43,25 @@ namespace Driver
             if (arg == "--no-output")           { _options.noOutput = true; continue; }
             if (arg == "--test")                { _options.test = true; continue; }
 
+            // --bench, or --bench=<runs>
+            if (arg == "--bench" || arg.starts_with("--bench="))
+            {
+                _options.bench = true;
+                if (arg != "--bench")
+                {
+                    std::string_view const count = arg.substr(std::string_view("--bench=").size());
+                    int runs = 0;
+                    auto const [end, error] = std::from_chars(count.data(), count.data() + count.size(), runs);
+                    if (error != std::errc() || end != count.data() + count.size() || runs < 1)
+                    {
+                        _error = "invalid number of runs '" + std::string(count) + "' after --bench=";
+                        return false;
+                    }
+                    _options.benchRuns = runs;
+                }
+                continue;
+            }
+
             // --mode=<name>, or --mode <name>
             if (arg == "--mode" || arg.starts_with("--mode="))
             {
@@ -60,6 +81,7 @@ namespace Driver
                     return false;
                 }
                 _options.mode = *mode;
+                _options.modeSet = true;
                 continue;
             }
 
@@ -69,7 +91,7 @@ namespace Driver
             hasFile = true;
         }
 
-        if (hasFile == false && _options.help == false && _options.test == false) { _error = "no source file given"; return false; }
+        if (hasFile == false && _options.help == false && _options.test == false && _options.bench == false) { _error = "no source file given"; return false; }
         return true;
     }
 
@@ -83,6 +105,10 @@ namespace Driver
         usage += _program;
         usage +=
             " --test\n"
+            "       ";
+        usage += _program;
+        usage +=
+            " [file] --bench[=runs]\n"
             "\n"
             "options:\n"
             "  --mode=tree|vm|jit  how the program runs (default: tree)\n"
@@ -92,6 +118,8 @@ namespace Driver
             "  --trace             trace the execution\n"
             "  --time              print the time spent in each stage\n"
             "  --no-output         drop the program output (benchmarks)\n"
+            "  --bench[=runs]      time the file (default: every file of res/Lebon/benchmarks) on tree, vm and jit,\n"
+            "                      or only on the --mode given; 10 timed runs by default\n"
             "  --test              run every test of res/Lebon (no file needed), exit code 1 if one fails\n"
             "  -h, --help          show this help\n";
         return usage;

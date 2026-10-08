@@ -1,7 +1,9 @@
 #include "main.h"
 
 #include "core/FileHelper.h"
+#include "Driver/Benchmark.h"
 #include "Driver/Options.h"
+#include "Driver/StageTimes.h"
 #include "Lexer/Lexer.h"
 #include "Lexer/Tokens.hpp"
 #include "Parser/Parser.h"
@@ -34,33 +36,7 @@ namespace
     // Exit code of an invalid command line (EX_USAGE)
     constexpr int UsageExitCode = 64;
 
-    // Time spent in each stage, printed on stderr with --time
-    class StageTimes
-    {
-    public:
-        template <typename F>
-        void Measure(char const* _stage, F&& _work)
-        {
-            auto const start = std::chrono::steady_clock::now();
-            _work();
-            auto const end = std::chrono::steady_clock::now();
-            m_stages.emplace_back(_stage, std::chrono::duration<double, std::milli>(end - start).count());
-        }
-
-        void Print() const
-        {
-            double total = 0;
-            for (auto const& [stage, ms] : m_stages)
-            {
-                std::fprintf(stderr, "[time] %-8s %10.3f ms\n", stage, ms);
-                total += ms;
-            }
-            std::fprintf(stderr, "[time] %-8s %10.3f ms\n", "total", total);
-        }
-
-    private:
-        std::vector<std::pair<char const*, double>> m_stages;
-    };
+    using Driver::StageTimes;
 
     class SinkBuf : public std::streambuf
     {
@@ -177,22 +153,26 @@ namespace
 
         switch (_options.mode)
         {
-        case Driver::Mode::Tree: result = RunTree(_options, _program, _context, _times); break;
-        case Driver::Mode::Vm:   result = RunVm(_options, _program, _context, _times);   break;
-        case Driver::Mode::Jit:  result = RunJit(_program, _context, _times);            break;
+        case Driver::Mode::Tree: 
+            result = RunTree(_options, _program, _context, _times);
+            break;
+        case Driver::Mode::Vm:   
+            result = RunVm(_options, _program, _context, _times);   
+            break;
+        case Driver::Mode::Jit:  
+            result = RunJit(_program, _context, _times);           
+            break;
         }
 
         _context.out->Flush();
         return result;
     }
 
-    // Runs the lexer, the parser, the analyser then the back end on one file.
+    // Runs the lexer, the parser, the analyser then the back end on one file, the program prints on _out.
     // A stage only runs if the previous ones logged no error.
     // Returns the code of the first error, Ok if the file went through.
-    Error::ErrorCode RunFile(Driver::Options const& _options)
+    Error::ErrorCode RunFile(Driver::Options const& _options, Runtime::OutputSink& _out, StageTimes& times)
     {
-        StageTimes times;
-
         Lexer lexer(_options.file);
         times.Measure("lex", [&] { lexer.Scan(); });
 
@@ -225,22 +205,63 @@ namespace
 
         if (program && ErrorManager::HasErrors() == false)
         {
-            Runtime::ConsoleSink console;
-            Runtime::NullSink null;
-
             Runtime::Context context;
-            context.out = _options.noOutput ? static_cast<Runtime::OutputSink*>(&null) : &console;
+            context.out = &_out;
 
             ErrorManager::LogError(Execute(_options, *program, context, times));
         }
-
-        if (_options.time)
-            times.Print();
 
         Error::ErrorCode code = static_cast<Error::ErrorCode>(ErrorManager::Code());
         ErrorManager::Clear();
 
         return code;
+    }
+
+    // The command line run: the output goes to the console unless --no-output, --time prints the stages
+    Error::ErrorCode RunCommandLine(Driver::Options const& _options)
+    {
+        Runtime::ConsoleSink console;
+        Runtime::NullSink null;
+        StageTimes times;
+
+        Error::ErrorCode const code = RunFile(_options, _options.noOutput ? static_cast<Runtime::OutputSink&>(null) : console, times);
+
+        if (_options.time)
+            times.Print();
+
+        return code;
+    }
+
+    // --bench: the file given, or every program of res/Lebon/benchmarks. Returns the exit code
+    int RunBench(Driver::Options _options)
+    {
+        std::vector<fs::path> files;
+
+        if (_options.file.empty() == false)
+        {
+            files.push_back(_options.file);
+        }
+        else
+        {
+            fs::path tests;
+            if (Error e = Test::FindTestsDir(tests))
+            {
+                Log::Log(LogType::Error, e.Format() + "\n");
+                return 1;
+            }
+
+            files = Test::LbnFilesIn(tests.parent_path() / "benchmarks");
+            if (files.empty())
+            {
+                Log::Log(LogType::Error, "no benchmark found in " + (tests.parent_path() / "benchmarks").string() + "\n");
+                return 1;
+            }
+        }
+
+        // Dumps and timings would drown the table
+        _options.dumpTokens = _options.dumpAst = _options.dumpBytecode = _options.trace = _options.time = false;
+
+        return Driver::RunBenchmark(_options, files, RunFile) == 0 ? 0 : 1;
     }
 }
 
@@ -270,7 +291,10 @@ int main(int _argc, char** _argv)
     if (options.test)
         return Test::RunAllTests() == 0 ? 0 : 1;
 
+    if (options.bench)
+        return RunBench(options);
+
     // The exit code is the code of the first error: 0 ok, 1 lexical, 2 syntax,
     // 3 semantics, 4 execution, 5 io
-    return static_cast<int>(RunFile(options));
+    return static_cast<int>(RunCommandLine(options));
 }

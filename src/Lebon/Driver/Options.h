@@ -19,6 +19,7 @@ namespace Driver
     {
         fs::path file;
         Mode mode = Mode::Tree;
+        bool modeSet = false;       // --mode was given
 
         bool dumpTokens = false;
         bool dumpAst = false;
@@ -27,6 +28,8 @@ namespace Driver
         bool time = false;
         bool noOutput = false;
         bool test = false;
+        bool bench = false;
+        int benchRuns = 10;
         bool help = false;
     };
 
