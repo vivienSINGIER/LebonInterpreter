@@ -28,9 +28,7 @@ namespace Driver
         bool time = false;
         bool noOutput = false;
         bool test = false;
-        bool mem = false;           // print the memory used by the run on stderr
         bool bench = false;
-        bool benchMem = false;
         int benchRuns = 10;
         bool help = false;
     };

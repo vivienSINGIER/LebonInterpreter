@@ -229,9 +229,6 @@ namespace
         if (_options.time)
             times.Print();
 
-        if (_options.mem)
-            std::fprintf(stderr, "%s\n", Driver::FormatMemoryLine(Driver::Memory::Process(), times.MemoryOf("run")).c_str());
-
         return code;
     }
 
@@ -274,15 +271,6 @@ namespace
         return Driver::RunBenchmark(_options, files, RunFile) == 0 ? 0 : 1;
     }
 
-    // --bench-mem: the memory of every file on each back end. Returns the exit code
-    int RunBenchMem(Driver::Options const& _options)
-    {
-        std::vector<fs::path> files;
-        if (BenchmarkFiles(_options, files) == false)
-            return 1;
-
-        return Driver::RunMemoryBenchmark(_options, files) == 0 ? 0 : 1;
-    }
 }
 
 int main(int _argc, char** _argv)
@@ -313,9 +301,6 @@ int main(int _argc, char** _argv)
 
     if (options.bench)
         return RunBench(options);
-
-    if (options.benchMem)
-        return RunBenchMem(options);
 
     // The exit code is the code of the first error: 0 ok, 1 lexical, 2 syntax,
     // 3 semantics, 4 execution, 5 io
